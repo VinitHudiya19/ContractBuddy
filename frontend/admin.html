@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuIntel - Admin Dashboard</title>
+    <!-- Google Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Background Glows -->
+    <div class="glow-bg bg-purple"></div>
+    <div class="glow-bg bg-blue"></div>
+
+    <div class="admin-view">
+        <!-- Dashboard Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="app.html" class="sidebar-logo">
+                    <i class="fa-solid fa-brain-circuit"></i>
+                    <span>DocuIntel</span>
+                </a>
+            </div>
+            
+            <div class="convo-list-container" style="padding-top: 20px;">
+                <div class="section-label">Admin Pages</div>
+                <div class="convo-list">
+                    <a href="#" class="convo-item active" id="btn-show-users">
+                        <div class="convo-item-left">
+                            <i class="fa-solid fa-users-gear"></i>
+                            <span>User Management</span>
+                        </div>
+                    </a>
+                    <a href="app.html" class="convo-item">
+                        <div class="convo-item-left">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Return to Chat</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- User management panel -->
+        <div class="admin-content" id="users-section">
+            <div class="admin-header">
+                <div>
+                    <h1>User Management</h1>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">View active sessions, uploaded counts, and toggle account activation status</p>
+                </div>
+                <div class="input-wrapper" style="max-width: 250px;">
+                    <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                    <input type="text" id="user-search-input" placeholder="Search name/email...">
+                </div>
+            </div>
+
+            <div class="chart-card glass" style="min-height: 500px;">
+                <div class="user-table-wrapper">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Uploaded Docs</th>
+                                <th>Questions Asked</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body">
+                            <!-- User rows rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Files -->
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
