@@ -40,9 +40,14 @@ async def get_current_user(
     jti = payload.get("jti")
 
     # Reject tokens explicitly blacklisted at logout.
-    redis = get_redis()
-    if jti and await redis.exists(f"token_blacklist:{jti}"):
-        raise InvalidTokenError("Token has been revoked.")
+    try:
+        redis = get_redis()
+        if jti and await redis.exists(f"token_blacklist:{jti}"):
+            raise InvalidTokenError("Token has been revoked.")
+    except InvalidTokenError:
+        raise
+    except Exception:
+        pass
 
     user_id = payload["sub"]
     repo = UserRepository(db)

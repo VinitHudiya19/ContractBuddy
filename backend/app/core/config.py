@@ -32,8 +32,8 @@ class Settings(BaseSettings):
 
     # ---- Infrastructure ----
     database_url: str = "sqlite+aiosqlite:///./contractbuddy.db"
-    redis_url: str = "redis://redis:6379/0"
-    qdrant_url: str = "http://qdrant:6333"
+    redis_url: str = "redis://localhost:6379/0"
+    qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "document_chunks"
 
     # ---- Auth ----
