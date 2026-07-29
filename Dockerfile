@@ -8,7 +8,8 @@ WORKDIR /app
 
 # Copy only requirements first for better caching
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire backend source code
 COPY backend/ .

@@ -22,8 +22,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python deps first for better layer caching.
+# Install CPU-only PyTorch (~180MB) instead of default CUDA PyTorch (~2.5GB) for fast builds.
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install -r requirements.txt
 
 # App code.
 COPY . .
