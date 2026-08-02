@@ -4,7 +4,9 @@
  * Written in simple, easy to read code with student-developer comments.
  */
 
-const API_BASE = window.location.origin;
+const API_BASE = (window.location.protocol === 'file:' || !window.location.port || window.location.port !== '8000')
+    ? 'http://127.0.0.1:8000'
+    : window.location.origin;
 
 class ApiClient {
     constructor() {
