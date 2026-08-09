@@ -1,3 +1,8 @@
+> ⚠️ **OUT OF DATE — kept only for history. Do not share this file.**
+> It documents features that are not in the codebase (e.g. SendGrid email
+> notifications) and is superseded by [README.md](README.md) and
+> [INTERVIEW_PREP_GUIDE.md](INTERVIEW_PREP_GUIDE.md).
+
 # Project Comprehensive Report & Interview Guide: ContractBuddy & DocuIntel RAG Platform
 
 This document provides a thorough, clear, and easy-to-understand breakdown of the entire working system. It explains the project architecture, how each feature works step-by-step, how the frontend and backend interact, how to run and test it, and ATS-optimized bullet points for your resume and interview preparation.

@@ -22,11 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python deps first for better layer caching.
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# App code.
-COPY . .
+# Backend code, then the static UI that main.py mounts at "/".
+COPY backend/ .
+COPY frontend/ ./frontend/
 
 # Non-root user.
 RUN useradd -m appuser && mkdir -p /app/storage && chown -R appuser:appuser /app
@@ -36,7 +37,7 @@ RUN useradd -m appuser && mkdir -p /app/storage && chown -R appuser:appuser /app
 EXPOSE 8000
 
 # The entrypoint runs migrations then launches uvicorn.
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]

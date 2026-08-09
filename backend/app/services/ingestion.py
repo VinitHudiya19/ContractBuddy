@@ -17,9 +17,9 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.db import qdrant_client
 from app.db.redis_client import get_redis
 from app.db.session import AsyncSessionLocal
+from app.db.vector_store import get_vector_store
 from app.models.document import Document, DocumentChunk
 from app.models.enums import DocumentStatus
 from app.providers.factory import get_embedder
@@ -64,8 +64,11 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
             if not chunks:
                 raise ValueError("Document produced no usable chunks.")
 
-            # 3. Persist chunk rows. content_tsv (BM25 leg) is a generated
-            #    column on Postgres — it populates itself from `content`.
+            # 3. Persist chunk rows. content_tsv (the lexical leg) is a
+            #    generated column on Postgres — it populates itself from
+            #    `content`. Commit immediately: embedding below is slow network
+            #    /CPU work, and holding a write transaction open across it locks
+            #    the database for every concurrent request (SQLite especially).
             chunk_rows: list[DocumentChunk] = []
             for c in chunks:
                 row = DocumentChunk(
@@ -78,27 +81,40 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
                 )
                 session.add(row)
                 chunk_rows.append(row)
-            await session.flush()
+            await session.commit()
 
             # 4. Embed in batches + 5. upsert vectors with tenant payload.
+            #    Snapshot the fields we need so no lazy load re-opens a
+            #    transaction while we are talking to the model and to Qdrant.
+            points = [
+                {
+                    "id": str(row.qdrant_point_id),
+                    "chunk_id": str(row.id),
+                    "content": row.content,
+                    "page_number": row.page_number,
+                }
+                for row in chunk_rows
+            ]
+            user_id, doc_id = str(document.user_id), str(document.id)
+
             embedder = get_embedder()
-            for i in range(0, len(chunk_rows), _EMBED_BATCH):
-                batch = chunk_rows[i : i + _EMBED_BATCH]
-                vectors = await embedder.embed([r.content for r in batch])
-                await qdrant_client.upsert_chunks(
+            for i in range(0, len(points), _EMBED_BATCH):
+                batch = points[i : i + _EMBED_BATCH]
+                vectors = await embedder.embed([p["content"] for p in batch])
+                await get_vector_store().upsert(
                     [
                         {
-                            "id": str(row.qdrant_point_id),
+                            "id": p["id"],
                             "vector": vector,
                             "payload": {
-                                "user_id": str(document.user_id),
-                                "document_id": str(document.id),
-                                "chunk_id": str(row.id),
-                                "page_number": row.page_number,
-                                "content_preview": row.content[:_PREVIEW_CHARS],
+                                "user_id": user_id,
+                                "document_id": doc_id,
+                                "chunk_id": p["chunk_id"],
+                                "page_number": p["page_number"],
+                                "content_preview": p["content"][:_PREVIEW_CHARS],
                             },
                         }
-                        for row, vector in zip(batch, vectors)
+                        for p, vector in zip(batch, vectors, strict=True)
                     ]
                 )
 
@@ -137,6 +153,7 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
 
 
 def upload_dir() -> Path:
-    path = Path(settings.upload_dir)
+    """Staging directory for in-flight uploads (absolute, created on demand)."""
+    path = settings.upload_path
     path.mkdir(parents=True, exist_ok=True)
     return path

@@ -3,7 +3,7 @@ Admin endpoints for user management and simple counts.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -35,7 +35,7 @@ _DAYS = 14
 
 
 def _day_range() -> list[str]:
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     return [(today - timedelta(days=i)).isoformat() for i in range(_DAYS - 1, -1, -1)]
 
 
@@ -96,7 +96,7 @@ async def usage_stats(db: AsyncSession = Depends(get_db)) -> UsageStats:
         return int((await db.execute(select(func.count()).select_from(entity))).scalar_one())
 
     days = _day_range()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=_DAYS)
+    cutoff = datetime.now(UTC) - timedelta(days=_DAYS)
 
     # Get queries and uploads counts by day
     queries_rows = (await db.execute(

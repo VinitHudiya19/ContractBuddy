@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from jose import JWTError, jwt
@@ -53,7 +53,7 @@ def create_access_token(
     """
     Returns (token, jti, expires_at). The `jti` lets us blacklist on logout.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(
         minutes=expires_minutes or settings.access_token_expire_minutes
     )
@@ -100,4 +100,4 @@ def hash_refresh_token(raw: str) -> str:
 
 
 def refresh_token_expiry() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+    return datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)

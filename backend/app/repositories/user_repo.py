@@ -7,7 +7,7 @@ caller owns the transaction boundary.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -62,7 +62,9 @@ class UserRepository:
         return user
 
     # ---- refresh tokens ----
-    async def store_refresh_token(self, *, user_id: UUID, raw_token: str, expires_at: datetime) -> RefreshToken:
+    async def store_refresh_token(
+        self, *, user_id: UUID, raw_token: str, expires_at: datetime
+    ) -> RefreshToken:
         rt = RefreshToken(
             user_id=user_id,
             token_hash=hash_refresh_token(raw_token),
@@ -98,5 +100,5 @@ class UserRepository:
             return False
         expires = rt.expires_at
         if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        return expires > datetime.now(timezone.utc)
+            expires = expires.replace(tzinfo=UTC)
+        return expires > datetime.now(UTC)

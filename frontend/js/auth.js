@@ -1,93 +1,93 @@
-/* 
- * DocuIntel - Authentication Page Logic
- * Handles tab toggles, form submits, and simple error display.
- * Simple code structure with casual student comments.
+/* Contract Buddy - Auth Page
+ * Login and registration form handlers.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if we are already logged in, redirect to workspace if so
-    if (api.accessToken) {
-        window.location.href = 'app.html';
-        return;
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // grab DOM elements
+    var loginTab = document.getElementById('login-tab');
+    var registerTab = document.getElementById('register-tab');
+    var loginForm = document.getElementById('login-form');
+    var registerForm = document.getElementById('register-form');
+    var errorAlert = document.getElementById('error-alert');
+    var errorMessage = document.getElementById('error-message');
+    var successAlert = document.getElementById('success-alert');
 
-    const loginTab = document.getElementById('login-tab');
-    const registerTab = document.getElementById('register-tab');
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const errorAlert = document.getElementById('error-alert');
-    const errorMessage = document.getElementById('error-message');
-    const successAlert = document.getElementById('success-alert');
-
-    // UI helpers to show errors or success popups
+    // helper: show error message
     function showError(msg) {
         errorMessage.textContent = msg;
         errorAlert.classList.remove('hidden');
         successAlert.classList.add('hidden');
     }
 
+    // helper: show success message  
     function showSuccess() {
-        errorAlert.classList.add('hidden');
         successAlert.classList.remove('hidden');
+        errorAlert.classList.add('hidden');
     }
 
+    // helper: clear all alerts
     function clearAlerts() {
         errorAlert.classList.add('hidden');
         successAlert.classList.add('hidden');
     }
 
-    // Switch view to Sign In form
-    loginTab.addEventListener('click', () => {
+    // tab switching
+    loginTab.addEventListener('click', function() {
+        clearAlerts();
         loginTab.classList.add('active');
         registerTab.classList.remove('active');
         loginForm.classList.remove('hidden');
         registerForm.classList.add('hidden');
-        clearAlerts();
     });
 
-    // Switch view to Register form
-    registerTab.addEventListener('click', () => {
+    registerTab.addEventListener('click', function() {
+        clearAlerts();
         registerTab.classList.add('active');
         loginTab.classList.remove('active');
         registerForm.classList.remove('hidden');
         loginForm.classList.add('hidden');
-        clearAlerts();
     });
 
-    // Sign In form handler
-    loginForm.addEventListener('submit', async (e) => {
+    // login form submit
+    loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         clearAlerts();
-        
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        const submitBtn = document.getElementById('btn-login-submit');
+        var email = document.getElementById('login-email').value.trim();
+        var password = document.getElementById('login-password').value;
+        var submitBtn = document.getElementById('btn-login-submit');
+
+        if (!email || !password) {
+            showError('Please fill in all fields.');
+            return;
+        }
 
         try {
-            // Disable button and show spinner-like state
             submitBtn.disabled = true;
             submitBtn.querySelector('span').textContent = 'Signing in...';
-
             await api.login(email, password);
-            console.log('Logged in successfully! Redirecting...');
             window.location.href = 'app.html';
         } catch (err) {
-            console.error('Login error:', err);
             showError(err.message || 'Invalid email or password.');
+        } finally {
             submitBtn.disabled = false;
             submitBtn.querySelector('span').textContent = 'Sign In';
         }
     });
 
-    // Registration form handler
-    registerForm.addEventListener('submit', async (e) => {
+    // register form submit
+    registerForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         clearAlerts();
 
-        const name = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
-        const submitBtn = document.getElementById('btn-register-submit');
+        var name = document.getElementById('reg-name').value.trim();
+        var email = document.getElementById('reg-email').value.trim();
+        var password = document.getElementById('reg-password').value;
+        var submitBtn = document.getElementById('btn-register-submit');
+
+        if (!name || !email || !password) {
+            showError('Please fill in all fields.');
+            return;
+        }
 
         if (password.length < 8) {
             showError('Password must be at least 8 characters long.');
@@ -97,18 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             submitBtn.disabled = true;
             submitBtn.querySelector('span').textContent = 'Creating account...';
-
+            // api.register takes (email, password, fullName)
             await api.register(email, password, name);
             showSuccess();
-            
-            // Switch user back to login tab automatically
-            setTimeout(() => {
+
+            // switch to login tab after a bit so they can sign in
+            setTimeout(function() {
                 loginTab.click();
                 document.getElementById('login-email').value = email;
                 document.getElementById('login-password').focus();
             }, 1500);
         } catch (err) {
-            console.error('Register error:', err);
             showError(err.message || 'Email might already be taken.');
         } finally {
             submitBtn.disabled = false;

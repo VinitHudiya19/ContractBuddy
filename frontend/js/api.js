@@ -1,28 +1,26 @@
-/* 
- * DocuIntel - API Client Library
- * Handles authentication, documents, conversations, SSE streaming, and admin stats.
- * Written in simple, easy to read code with student-developer comments.
+/* Contract Buddy - API Client
+ * Handles all HTTP requests to the backend REST API.
+ * Manages JWT tokens, auto-refresh, and SSE streaming.
  */
 
-const API_BASE = (window.location.protocol === 'file:' || !window.location.port || window.location.port !== '8000')
+var API_BASE = (window.location.protocol === 'file:' || !window.location.port || window.location.port !== '8000')
     ? 'http://127.0.0.1:8000'
     : window.location.origin;
 
 class ApiClient {
     constructor() {
+        // load tokens from local storage on startup
         this.accessToken = localStorage.getItem('access_token');
         this.refreshToken = localStorage.getItem('refresh_token');
     }
 
-    // Save JWT tokens in localStorage
     saveTokens(access, refresh) {
         this.accessToken = access;
         this.refreshToken = refresh;
-        localStorage.setItem('access_token', access);
-        localStorage.setItem('refresh_token', refresh);
+        if (access) localStorage.setItem('access_token', access);
+        if (refresh) localStorage.setItem('refresh_token', refresh);
     }
 
-    // Clear tokens on logout
     clearTokens() {
         this.accessToken = null;
         this.refreshToken = null;
@@ -30,75 +28,93 @@ class ApiClient {
         localStorage.removeItem('refresh_token');
     }
 
-    // Generic fetch request with auto-refresh token retry logic
-    async request(path, options = {}) {
+    // generic fetch with auth header and auto-retry on 401
+    async request(path, options) {
+        options = options || {};
         options.headers = options.headers || {};
-        
+
         if (this.accessToken) {
-            options.headers['Authorization'] = `Bearer ${this.accessToken}`;
+            options.headers['Authorization'] = 'Bearer ' + this.accessToken;
         }
-        
-        // Add random request ID header
-        const requestId = Math.random().toString(36).substring(2, 10);
-        options.headers['X-Request-ID'] = requestId;
 
-        let response = await fetch(`${API_BASE}${path}`, options);
+        // default to JSON content type if body is a string and not already set
+        if (options.body && typeof options.body === 'string' && !options.headers['Content-Type']) {
+            options.headers['Content-Type'] = 'application/json';
+        }
 
-        // Auto refresh access token on 401
-        if (response.status === 401 && this.refreshToken) {
-            try {
-                const refreshed = await this.rotateTokens();
-                if (refreshed) {
-                    options.headers['Authorization'] = `Bearer ${this.accessToken}`;
-                    response = await fetch(`${API_BASE}${path}`, options);
-                }
-            } catch (err) {
+        var res = await fetch(API_BASE + path, options);
+
+        // auto refresh on 401 ONLY for protected routes (not auth login/register/refresh)
+        var isAuthPath = path.indexOf('/api/auth/login') !== -1 || 
+                         path.indexOf('/api/auth/register') !== -1 || 
+                         path.indexOf('/api/auth/refresh') !== -1;
+
+        if (res.status === 401 && !isAuthPath && this.refreshToken) {
+            var refreshed = await this.rotateTokens();
+            if (refreshed) {
+                options.headers['Authorization'] = 'Bearer ' + this.accessToken;
+                res = await fetch(API_BASE + path, options);
+            } else {
                 this.clearTokens();
                 window.location.href = 'index.html';
-                throw err;
+                throw new Error('Session expired');
             }
         }
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            const errMsg = errData.error?.message || `Request failed with status ${response.status}`;
-            const errCode = errData.error?.code || 'HTTP_ERROR';
-            const error = new Error(errMsg);
-            error.code = errCode;
-            error.status = response.status;
+        if (!res.ok) {
+            var errorMsg = 'Request failed (status ' + res.status + ')';
+            try {
+                var errData = await res.json();
+                if (errData.detail) {
+                    errorMsg = typeof errData.detail === 'string'
+                        ? errData.detail
+                        : JSON.stringify(errData.detail);
+                } else if (errData.error && errData.error.message) {
+                    errorMsg = errData.error.message;
+                } else if (errData.message) {
+                    errorMsg = errData.message;
+                }
+            } catch (e) { /* response was not json */ }
+            var error = new Error(errorMsg);
+            error.status = res.status;
             throw error;
         }
 
-        if (response.status === 204) return null;
-        return response.json();
+        if (res.status === 204) return null;
+        return res.json();
     }
 
-    // Call refresh token rotation endpoint
+    // refresh token rotation
     async rotateTokens() {
         if (!this.refreshToken) return false;
-        
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: this.refreshToken })
-        });
-
-        if (!res.ok) {
+        try {
+            var res = await fetch(API_BASE + '/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: this.refreshToken })
+            });
+            if (!res.ok) {
+                this.clearTokens();
+                return false;
+            }
+            var data = await res.json();
+            this.saveTokens(data.access_token, data.refresh_token);
+            return true;
+        } catch (e) {
             this.clearTokens();
             return false;
         }
-
-        const data = await res.json();
-        this.saveTokens(data.access_token, data.refresh_token);
-        return true;
     }
 
-    // --- Authentication Actions ---
+    // --- Auth endpoints ---
+
     async login(email, password) {
-        const data = await this.request('/api/auth/login', {
+        // clear old tokens before trying to log in
+        this.clearTokens();
+        var data = await this.request('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email: email, password: password })
         });
         this.saveTokens(data.access_token, data.refresh_token);
         return data;
@@ -108,7 +124,7 @@ class ApiClient {
         return this.request('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, full_name: fullName })
+            body: JSON.stringify({ email: email, password: password, full_name: fullName })
         });
     }
 
@@ -116,7 +132,7 @@ class ApiClient {
         try {
             await this.request('/api/auth/logout', { method: 'POST' });
         } catch (e) {
-            console.warn('Logout request failed, cleaning local state anyway', e);
+            // ignore
         }
         this.clearTokens();
     }
@@ -125,140 +141,137 @@ class ApiClient {
         return this.request('/api/me');
     }
 
-    async updateProfile(fullName) {
-        return this.request('/api/profile', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: fullName })
-        });
-    }
+    // --- Document endpoints ---
 
-    // --- Document Actions ---
     async getDocuments() {
         return this.request('/api/documents');
     }
 
     async getDocumentStatus(docId) {
-        return this.request(`/api/documents/${docId}/status`);
+        return this.request('/api/documents/' + docId + '/status');
     }
 
     async deleteDocument(docId) {
-        return this.request(`/api/documents/${docId}`, { method: 'DELETE' });
+        return this.request('/api/documents/' + docId, { method: 'DELETE' });
     }
 
-    async summarizeDocument(docId, extraIds = []) {
-        return this.request(`/api/documents/${docId}/summarize`, {
+    async summarizeDocument(docId, extraIds) {
+        return this.request('/api/documents/' + docId + '/summarize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ extra_document_ids: extraIds })
+            body: JSON.stringify({ extra_document_ids: extraIds || [] })
         });
     }
 
-    async reindexDocument(docId) {
-        return this.request('/api/reindex', {
+    // --- Conversation endpoints ---
+
+    async getConversations() {
+        return this.request('/api/conversations');
+    }
+
+    async createConversation(title, documentScope) {
+        return this.request('/api/conversations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ document_id: docId })
+            body: JSON.stringify({ title: title, document_scope: documentScope || null })
         });
     }
 
-    // --- Contract Actions ---
+    async getMessages(convoId) {
+        return this.request('/api/conversations/' + convoId + '/messages');
+    }
+
+    async deleteConversation(convoId) {
+        return this.request('/api/conversations/' + convoId, { method: 'DELETE' });
+    }
+
+    // update title and/or which documents this conversation searches
+    async updateConversation(convoId, changes) {
+        return this.request('/api/conversations/' + convoId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(changes)
+        });
+    }
+
+    // --- Contract endpoints ---
+
     async getContracts() {
         return this.request('/api/contracts');
     }
 
     async uploadContract(title, file) {
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('file', file);
-
-        const headers = {};
-        if (this.accessToken) {
-            headers['Authorization'] = `Bearer ${this.accessToken}`;
-        }
-        const res = await fetch(`${API_BASE}/api/contracts/`, {
-            method: 'POST',
-            headers: headers,
-            body: formData
-        });
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.detail || 'Contract upload failed');
-        }
-        return res.json();
+        var form = new FormData();
+        form.append('title', title);
+        form.append('file', file);
+        // no Content-Type header: the browser sets the multipart boundary
+        return this.request('/api/contracts', { method: 'POST', body: form });
     }
 
     async analyzeContract(contractId) {
-        return this.request(`/api/contracts/${contractId}/analyze`, { method: 'POST' });
-    }
-
-    // --- Conversation Actions ---
-    async getConversations() {
-        return this.request('/api/conversations');
-    }
-
-    async createConversation(title = null, documentScope = null) {
-        return this.request('/api/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, document_scope: documentScope })
+        return this.request('/api/contracts/' + contractId + '/analyze', {
+            method: 'POST'
         });
     }
 
-    async getMessages(convoId) {
-        return this.request(`/api/conversations/${convoId}/messages`);
+    async deleteContract(contractId) {
+        return this.request('/api/contracts/' + contractId, { method: 'DELETE' });
     }
 
-    async deleteConversation(convoId) {
-        return this.request(`/api/conversations/${convoId}`, { method: 'DELETE' });
+    async getHealth() {
+        return this.request('/health');
     }
 
-    // Custom fetch call for SSE streaming responses
-    async askStream(convoId, question, stream = true, onMeta, onToken, onDone, onError) {
-        const url = `${API_BASE}/api/conversations/${convoId}/messages`;
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-Request-ID': Math.random().toString(36).substring(2, 10)
+    // SSE streaming for chat - backend sends event: + data: format
+    async askStream(convoId, question, stream, onMeta, onToken, onDone, onError) {
+        var url = API_BASE + '/api/conversations/' + convoId + '/messages';
+        var headers = {
+            'Content-Type': 'application/json'
         };
         if (this.accessToken) {
-            headers['Authorization'] = `Bearer ${this.accessToken}`;
+            headers['Authorization'] = 'Bearer ' + this.accessToken;
         }
 
         try {
-            const response = await fetch(url, {
+            var response = await fetch(url, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ question, stream })
+                body: JSON.stringify({ question: question, stream: stream })
             });
 
             if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error?.message || 'Chat generation request failed');
+                var errMsg = 'Chat request failed';
+                try {
+                    var errData = await response.json();
+                    if (errData.detail) errMsg = errData.detail;
+                    else if (errData.error && errData.error.message) errMsg = errData.error.message;
+                } catch (e) {}
+                throw new Error(errMsg);
             }
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let buffer = '';
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder('utf-8');
+            var buffer = '';
+            var currentEvent = '';
 
             while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop();
+                var result = await reader.read();
+                if (result.done) break;
 
-                let currentEvent = '';
-                for (const line of lines) {
-                    const cleanLine = line.trim();
-                    if (!cleanLine) continue;
+                buffer += decoder.decode(result.value, { stream: true });
+                var lines = buffer.split('\n');
+                buffer = lines.pop(); // keep the partial last line
 
-                    if (cleanLine.startsWith('event:')) {
-                        currentEvent = cleanLine.substring(6).trim();
-                    } else if (cleanLine.startsWith('data:')) {
-                        const rawData = cleanLine.substring(5).trim();
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line) continue;
+
+                    if (line.indexOf('event:') === 0) {
+                        currentEvent = line.substring(6).trim();
+                    } else if (line.indexOf('data:') === 0) {
+                        var rawData = line.substring(5).trim();
                         try {
-                            const parsed = JSON.parse(rawData);
+                            var parsed = JSON.parse(rawData);
                             if (currentEvent === 'meta' && onMeta) {
                                 onMeta(parsed);
                             } else if (currentEvent === 'token' && onToken) {
@@ -269,26 +282,26 @@ class ApiClient {
                                 onError(parsed);
                             }
                         } catch (e) {
-                            console.error('Error parsing SSE packet', e, rawData);
+                            // skip unparseable lines
                         }
                     }
                 }
             }
         } catch (err) {
             if (onError) onError({ message: err.message });
-            else console.error('SSE connection error:', err);
         }
     }
 
-    // --- Admin Dashboard Actions ---
-    async adminGetUsers(searchQuery = null) {
-        let path = '/api/admin/users';
-        if (searchQuery) path += `?search=${encodeURIComponent(searchQuery)}`;
+    // --- Admin endpoints ---
+
+    async adminGetUsers(searchQuery) {
+        var path = '/api/admin/users';
+        if (searchQuery) path += '?search=' + encodeURIComponent(searchQuery);
         return this.request(path);
     }
 
     async adminSetUserActive(userId, isActive) {
-        return this.request(`/api/admin/users/${userId}`, {
+        return this.request('/api/admin/users/' + userId, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_active: isActive })
@@ -300,4 +313,4 @@ class ApiClient {
     }
 }
 
-const api = new ApiClient();
+var api = new ApiClient();

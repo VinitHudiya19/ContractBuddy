@@ -3,84 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuIntel - Admin Dashboard</title>
-    <!-- Google Fonts and Icons -->
+    <title>Contract Buddy - Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Background Glows -->
-    <div class="glow-bg bg-purple"></div>
-    <div class="glow-bg bg-blue"></div>
-
-    <div class="admin-view">
-        <!-- Dashboard Sidebar -->
-        <aside class="sidebar">
+    <div class="admin-container">
+        <aside class="admin-sidebar">
             <div class="sidebar-header">
                 <a href="app.html" class="sidebar-logo">
-                    <i class="fa-solid fa-brain-circuit"></i>
-                    <span>DocuIntel</span>
+                    <i class="fa-solid fa-file-contract"></i>
+                    <span>Contract Buddy</span>
                 </a>
             </div>
-            
-            <div class="convo-list-container" style="padding-top: 20px;">
-                <div class="section-label">Admin Pages</div>
-                <div class="convo-list">
-                    <a href="#" class="convo-item active" id="btn-show-users">
-                        <div class="convo-item-left">
-                            <i class="fa-solid fa-users-gear"></i>
-                            <span>User Management</span>
-                        </div>
-                    </a>
-                    <a href="app.html" class="convo-item">
-                        <div class="convo-item-left">
-                            <i class="fa-solid fa-arrow-left"></i>
-                            <span>Return to Chat</span>
-                        </div>
-                    </a>
-                </div>
-            </div>
+            <nav class="admin-nav">
+                <a href="#" class="active">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>User Management</span>
+                </a>
+                <a href="app.html">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Back to App</span>
+                </a>
+            </nav>
         </aside>
 
-        <!-- User management panel -->
-        <div class="admin-content" id="users-section">
-            <div class="admin-header">
-                <div>
-                    <h1>User Management</h1>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">View active sessions, uploaded counts, and toggle account activation status</p>
-                </div>
-                <div class="input-wrapper" style="max-width: 250px;">
+        <main class="admin-main">
+            <header class="admin-header">
+                <h2>User Management</h2>
+                <div class="admin-search-bar">
                     <i class="fa-solid fa-magnifying-glass input-icon"></i>
-                    <input type="text" id="user-search-input" placeholder="Search name/email...">
+                    <input type="text" id="user-search-input" placeholder="Search users by name or email...">
                 </div>
-            </div>
+            </header>
 
-            <div class="chart-card glass" style="min-height: 500px;">
-                <div class="user-table-wrapper">
-                    <table class="user-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Uploaded Docs</th>
-                                <th>Questions Asked</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-table-body">
-                            <!-- User rows rendered here -->
-                        </tbody>
-                    </table>
+            <section class="stat-grid" id="stat-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Users</span>
+                    <span class="stat-value" id="stat-users">—</span>
                 </div>
+                <div class="stat-card">
+                    <span class="stat-label">Documents</span>
+                    <span class="stat-value" id="stat-documents">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Conversations</span>
+                    <span class="stat-value" id="stat-conversations">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Messages</span>
+                    <span class="stat-value" id="stat-messages">—</span>
+                </div>
+            </section>
+
+            <section class="chart-card">
+                <h3>Questions asked (last 14 days)</h3>
+                <div class="bar-chart" id="queries-chart"></div>
+            </section>
+
+            <div class="admin-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Documents</th>
+                            <th>Queries</th>
+                            <th>Active</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </div>
+        </main>
     </div>
 
-    <!-- JS Files -->
     <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
 </body>

@@ -3,30 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuIntel - Workspace</title>
-    <!-- Fonts and Icons -->
+    <title>Contract Buddy - Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Custom background glows -->
-    <div class="glow-bg bg-purple"></div>
-    <div class="glow-bg bg-blue"></div>
-
     <div class="app-container">
-        <!-- 1. LEFT SIDEBAR -->
+        <!-- LEFT SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <a href="#" class="sidebar-logo">
-                    <i class="fa-solid fa-brain-circuit"></i>
-                    <span>DocuIntel</span>
+                    <i class="fa-solid fa-file-contract"></i>
+                    <span>Contract Buddy</span>
                 </a>
             </div>
 
-            <!-- New conversation button -->
             <div class="sidebar-action">
                 <button class="btn btn-primary btn-block" id="btn-new-convo">
                     <i class="fa-solid fa-plus"></i>
@@ -34,16 +28,13 @@
                 </button>
             </div>
 
-            <!-- List of past conversations -->
             <div class="convo-list-container">
                 <div class="section-label">Conversations</div>
                 <div class="convo-list" id="conversations-list">
-                    <!-- Dynamic rendering of chats here -->
                     <div class="convo-empty-state">No conversations yet.</div>
                 </div>
             </div>
 
-            <!-- Bottom user card panel -->
             <div class="sidebar-user">
                 <div class="user-info">
                     <div class="user-avatar" id="user-avatar-initials">U</div>
@@ -63,16 +54,14 @@
             </div>
         </aside>
 
-        <!-- 2. MAIN WORKSPACE AREA -->
+        <!-- MAIN WORKSPACE -->
         <main class="main-workspace">
             <header class="app-header">
                 <div class="header-title-section">
-                    <h2 id="active-convo-title">Select or Start a Chat</h2>
+                    <h2 id="active-convo-title">Select or start a chat</h2>
                     <span id="active-convo-scope-info">Searching all documents</span>
                 </div>
-
                 <div class="header-actions">
-                    <!-- Scope selector dropdown -->
                     <div class="scope-selector-wrapper">
                         <button class="scope-btn" id="btn-toggle-scope">
                             <i class="fa-solid fa-filter"></i>
@@ -81,40 +70,33 @@
                         </button>
                         <div class="scope-dropdown hidden" id="scope-dropdown-menu">
                             <div class="scope-dropdown-header">
-                                <span>Filter Documents</span>
+                                <span>Search only these</span>
                                 <button class="btn btn-sm btn-secondary" id="btn-clear-scope">Clear</button>
                             </div>
                             <div class="scope-list" id="scope-documents-list">
-                                <!-- Ready documents checklist goes here -->
-                                <div class="empty-state">Upload documents to search.</div>
+                                <div class="empty-state">No indexed documents yet.</div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Ingestion / document manager button -->
                     <button class="btn btn-secondary" id="btn-open-documents">
                         <i class="fa-regular fa-file-lines"></i>
                         <span>Documents</span>
                     </button>
-                    <!-- Contract & Risk Analytics button -->
                     <button class="btn btn-primary" id="btn-open-contracts">
                         <i class="fa-solid fa-shield-halved"></i>
-                        <span>Contracts & AI Risk</span>
+                        <span>Contracts</span>
                     </button>
                 </div>
             </header>
 
-            <!-- Chat message logs -->
             <div class="chat-messages" id="chat-messages-container">
-                <!-- Welcome empty state -->
                 <div class="chat-empty" id="chat-empty-state">
-                    <i class="fa-solid fa-comments"></i>
-                    <h3>Welcome to DocuIntel</h3>
-                    <p>Upload your PDFs or DOCX reports and start chatting. Your questions will be answered with page-level citations based on your uploaded context.</p>
+                    <i class="fa-regular fa-comments"></i>
+                    <h3>Welcome to Contract Buddy</h3>
+                    <p>Upload a PDF or DOCX, then ask questions about it. Every answer cites the page it came from.</p>
                 </div>
             </div>
 
-            <!-- Input area -->
             <div class="chat-input-container">
                 <div class="chat-input-wrapper">
                     <textarea id="chat-textarea" placeholder="Ask a question about your documents..." disabled></textarea>
@@ -126,91 +108,74 @@
         </main>
     </div>
 
-    <!-- 3. CITATIONS SLIDE-OUT DRAWER -->
+    <!-- CITATIONS DRAWER -->
     <div class="details-drawer" id="citations-drawer">
         <div class="drawer-header">
-            <h3>Citations Details</h3>
+            <h3>Source</h3>
             <button class="close-btn" id="btn-close-drawer">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <div class="drawer-body" id="citations-drawer-body">
-            <!-- Dynamic citation cards populated here -->
-        </div>
+        <div class="drawer-body" id="citations-drawer-body"></div>
     </div>
 
-    <!-- 4. DOCUMENTS MANAGEMENT MODAL -->
+    <!-- DOCUMENTS MODAL -->
     <div class="upload-modal hidden" id="documents-modal">
-        <div class="upload-modal-content glass">
+        <div class="upload-modal-content">
             <div class="modal-header">
-                <h3>Document Manager</h3>
+                <h3>Your documents</h3>
                 <button class="close-btn" id="btn-close-documents-modal">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-
-            <!-- Drag & drop upload target -->
             <div class="dropzone" id="upload-dropzone">
                 <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
                 <p>Drag and drop PDF or DOCX files here</p>
-                <span>Max upload size: 20MB</span>
+                <span>or click to browse — max 20MB</span>
                 <input type="file" id="file-input" class="hidden" accept=".pdf,.docx" multiple>
             </div>
-
-            <!-- List of files currently uploading -->
             <div class="upload-progress-list" id="upload-progress-container"></div>
-
-            <!-- Table of uploaded documents -->
             <div class="doc-panel" id="uploaded-documents-list">
-                <!-- Row items rendered here -->
-                <div class="empty-state">No uploaded documents.</div>
+                <div class="empty-state">No documents yet. Drop a PDF or DOCX above.</div>
             </div>
         </div>
     </div>
 
-    <!-- 5. CONTRACTS & AI RISK ANALYTICS MODAL -->
+    <!-- CONTRACTS MODAL -->
     <div class="upload-modal hidden" id="contracts-modal">
-        <div class="upload-modal-content glass contract-modal-large">
+        <div class="upload-modal-content contract-modal-large">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-file-contract"></i> Contract Lifecycle & AI Risk Analytics</h3>
+                <h3>Contract analysis</h3>
                 <button class="close-btn" id="btn-close-contracts-modal">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-
-            <!-- Upload new contract section -->
             <div class="contract-upload-bar">
                 <form id="contract-upload-form" class="contract-form-inline">
-                    <input type="text" id="contract-title-input" placeholder="Contract Title (e.g. Master Services Agreement)" required>
-                    <input type="file" id="contract-file-input" accept=".pdf,.docx,.txt" required>
+                    <input type="text" id="contract-title-input" placeholder="Contract title" required>
+                    <input type="file" id="contract-file-input" accept=".pdf,.docx,.txt,.md" required>
                     <button type="submit" class="btn btn-primary" id="btn-upload-contract">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Upload & Run AI Analysis
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Upload &amp; analyze
                     </button>
                 </form>
             </div>
-
-            <!-- Main Contracts Container (List + AI Deep Analysis Side Panel) -->
             <div class="contract-dashboard-grid">
-                <!-- Left: Contracts List -->
                 <div class="contract-list-panel">
-                    <h4>Uploaded Contracts</h4>
+                    <h4>Contracts</h4>
                     <div id="contracts-list" class="contract-card-list">
-                        <div class="empty-state">No contracts analyzed yet. Upload a contract above.</div>
+                        <div class="empty-state">No contracts yet. Upload one above.</div>
                     </div>
                 </div>
-
-                <!-- Right: Selected Contract AI Analysis Details -->
                 <div class="contract-analysis-panel" id="contract-analysis-view">
                     <div class="empty-analysis-placeholder">
                         <i class="fa-solid fa-chart-pie"></i>
-                        <p>Select a contract on the left to view metadata and deep AI risk extraction.</p>
+                        <p>Select a contract to see its analysis.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JS Files -->
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>

@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import DocumentNotReadyError, DocumentNotFoundError
+from app.core.exceptions import DocumentNotFoundError, DocumentNotReadyError
 from app.core.logging import get_logger
 from app.models.document import Document, DocumentChunk
 from app.models.enums import DocumentStatus

@@ -1,233 +1,232 @@
-# Contract Buddy – Premium Multi‑Tenant Contract AI Platform
+# Contract Buddy
 
-> A **state‑of‑the‑art** Retrieval‑Augmented Generation (RAG) system that blends dense vector search, full‑text keyword matching, and AI‑driven contract analysis. Designed for enterprise‑grade multi‑tenant isolation, glass‑morphism UI, and production‑ready Docker deployment.
+A multi-tenant document Q&A system. Upload a contract, ask questions in plain
+English, and get answers that cite the exact page they came from.
 
----
+The interesting part is the retrieval: instead of plain vector search, it runs
+**dense semantic search and lexical keyword search in parallel**, fuses the two
+ranked lists with **Reciprocal Rank Fusion**, and re-scores the survivors with a
+**cross-encoder** before anything reaches the language model.
 
-## Table of Contents
-1. [Why Contract Buddy?](#why-contract-buddy)
-2. [Key Features](#key-features)
-3. [Architecture & Tech Stack](#architecture--tech-stack)
-4. [Directory Layout](#directory-layout)
-5. [Quick‑Start (Docker)](#quick-start-docker)
-6. [Local Development (Windows/macOS/Linux)](#local-development)
-7. [API Reference & Usage](#api-reference)
-8. [AI Contract Analysis Workflow](#ai-contract-analysis-workflow)
-9. [Testing & CI](#testing--ci)
-10. [Contribution Guide](#contribution-guide)
-11. [Resume Highlights (Project Summary)](#resume-highlights)
-12. [License & Acknowledgements](#license--acknowledgements)
-
----
-
-## Why Contract Buddy?
-* **Enterprise‑grade multi‑tenant data isolation** – every document, chunk, and vector is scoped to the owning user. No data leakage across accounts.
-* **Hybrid Retrieval** – combines **Qdrant** dense semantic similarity with **PostgreSQL** full‑text search (GIN + `tsvector`). The result set is fused with **Reciprocal Rank Fusion (RRF)** for optimal relevance.
-* **Local Cross‑Encoder Reranking** – a lightweight `ms‑marco‑MiniLM‑L‑6‑v2` model re‑orders the top‑K candidates, delivering near‑state‑of‑the‑art accuracy without external API costs.
-* **Citation‑Level Grounding** – answers come with inline citations (`[S1]`, `[S2]`) that open a drawer showing the exact source snippet and page number.
-* **Fast, Free LLM Generation** – leverages **Llama‑3‑8B** on the **Groq** LPU platform, streaming tokens via Server‑Sent Events (SSE).
-* **Docker‑first delivery** – one‑click compose brings up **FastAPI**, **PostgreSQL**, **Redis**, **Qdrant**, and the vanilla HTML/CSS/JS UI.
-
----
-
-## Key Features
-- Multi‑tenant isolation (user‑level payload filters in Qdrant, foreign‑key constraints in PostgreSQL).
-- **Hybrid Retrieval** (semantic + lexical) with **RRF** fusion.
-- **Cross‑Encoder Reranking** for top‑K relevance boosting.
-- **Page‑level citations** with interactive UI.
-- **Document summarization** (map‑reduce across chunks).
-- **Admin dashboard** for user activation, deactivation, and usage metrics.
-- **Rate‑limiting & JWT revocation** via Redis.
-- **Docker Compose** orchestration for local & production‑like environments.
-- **Extensible provider layer** – swap Groq, OpenAI, Anthropic, or local LLMs.
-
----
-
-## Architecture & Tech Stack
-```mermaid
-flowchart LR
-    subgraph Frontend[Frontend (Vanilla HTML/CSS/JS)]
-        UI[UI – Glassmorphism, dark mode, micro‑animations]
-    end
-
-    subgraph Backend[FastAPI Backend (Python 3.12)]
-        API[REST API + SSE]
-        Auth[Auth (JWT, Refresh, Revocation)]
-        Services[Business Services]
-        Repos[SQLAlchemy Repos]
-    end
-
-    subgraph DB[Data Stores]
-        PG[PostgreSQL]:::db
-        Q[Qdrant]:::db
-        R[Redis]:::db
-    end
-
-    UI -->|HTTPS fetch / SSE| API
-    API --> Auth
-    API --> Services
-    Services --> Repos
-    Repos -->|SQL| PG
-    Services -->|Vector queries| Q
-    Auth -->|Token blacklist| R
-    Services -->|Rate‑limit| R
-    classDef db fill:#f9f,stroke:#333,stroke-width:2px;
 ```
-
-**Core Technologies**
-| Layer | Tech |
-|-------|------|
-| API | FastAPI, Uvicorn, Pydantic |
-| DB  | PostgreSQL (asyncpg), Qdrant (384‑dim vectors), Redis |
-| AI  | Groq Llama‑3‑8B (or any LLM via provider), Sentence‑Transformers (`all‑MiniLM‑L6‑v2`), Cross‑Encoder (`ms‑marco‑MiniLM‑L‑6‑v2`) |
-| Frontend | Vanilla HTML, CSS (glassmorphism, gradients), JavaScript (Fetch, SSE, micro‑animations) |
-| DevOps | Docker, Docker‑Compose, Alembic migrations |
-
----
-
-## Directory Layout
-```
-.
-├─ backend/                     # FastAPI service
-│   ├─ app/
-│   │   ├─ api/v1/            # Endpoint modules (auth, contracts, chat…)
-│   │   ├─ core/              # config, security, logging
-│   │   ├─ db/                # async SQLAlchemy, Alembic, Qdrant, Redis clients
-│   │   ├─ models/            # ORM definitions
-│   │   ├─ providers/         # LLM / embedding adapters
-│   │   ├─ repositories/      # Query abstraction layer
-│   │   ├─ services/          # Business logic (ingestion, retrieval, summarization…)
-│   │   └─ main.py            # FastAPI entrypoint
-│   ├─ Dockerfile              # Backend container recipe
-│   ├─ requirements.txt
-│   └─ alembic.ini
-├─ frontend/                    # Static UI
-│   ├─ index.html
-│   ├─ app.html                # Chat workspace
-│   ├─ admin.html              # Admin dashboard
-│   ├─ css/styles.css
-│   └─ js/*.js                 # API, auth, chat, admin logic
-├─ docker-compose.yml          # Orchestrates backend, db, redis, qdrant
-├─ .env.example                # Template for environment variables
-└─ README.md                   # (this file)
+┌────────────┐   ┌─────────────────────────────────────────┐   ┌────────────┐
+│  PDF/DOCX  │──▶│  parse → chunk → embed → index          │──▶│  Vectors   │
+└────────────┘   └─────────────────────────────────────────┘   │  + Chunks  │
+                                                               └──────┬─────┘
+┌────────────┐   ┌──────────────┐                                     │
+│  Question  │──▶│  dense leg   │──┐                                  │
+└────────────┘   └──────────────┘  │   ┌─────┐   ┌───────────┐   ┌────▼────┐
+                 ┌──────────────┐  ├──▶│ RRF │──▶│ Reranker  │──▶│   LLM   │
+                 │ keyword leg  │──┘   └─────┘   └───────────┘   └────┬────┘
+                 └──────────────┘                                     │
+                                                        answer + [S1] citations
 ```
 
 ---
 
-## Quick‑Start (Docker)  
-> **One command** to spin up the whole stack.
+## Run it
 
-1. **Copy the env template**
-   ```bash
-   cp .env.example .env
-   ```
-2. **Add your Groq (or other) API key**
-   ```dotenv
-   GROQ_API_KEY=your‑groq‑key‑here
-   ```
-3. **Launch containers**
-   ```bash
-   docker compose up --build -d
-   ```
-4. **Run database migrations**
-   ```bash
-   docker compose exec api alembic upgrade head
-   ```
-5. **Open the UI** – `frontend/index.html` in your browser (or serve it via a simple static server).  
-   API docs are available at <http://localhost:8000/docs>.
+**No Docker, no API key, no database server.** From a clean checkout:
 
----
-
-## Local Development (Windows/macOS/Linux)  
-> Use the built‑in virtual environment for rapid iteration.
-
-```powershell
-# Windows PowerShell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
 ```bash
-# macOS / Linux
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+cd backend && python -m venv .venv && .venv/Scripts/activate && pip install -r requirements.txt && uvicorn app.main:app --reload
 ```
 
-Make sure the following services are running (Docker is the easiest way):
+On macOS/Linux use `source .venv/bin/activate` instead. Then open
+<http://localhost:8000> and sign in with `admin@example.com` / `admin12345`.
+
+That works because every external dependency has a built-in fallback:
+
+| Dependency | Configured by | Fallback when absent |
+|---|---|---|
+| PostgreSQL | `DATABASE_URL` | SQLite file, tables auto-created |
+| Qdrant | `QDRANT_URL` | `chunk_vectors` table + NumPy dot product |
+| Redis | `REDIS_URL` | rate limiting fails open, status read from the database |
+| LLM | `GROQ_API_KEY` | extractive answers quoted from the sources |
+
+Add a free [Groq](https://console.groq.com) key to `.env` for generated answers:
+
 ```bash
-docker compose up -d postgres redis qdrant
+GROQ_API_KEY=gsk_your_key_here
 ```
 
----
+### Full stack with Docker
 
-## API Reference & Usage
-* **Swagger UI** – <http://localhost:8000/docs>
-* **Authentication** – `POST /api/auth/login` returns `access_token` and `refresh_token`.
-* **Upload Contract** – `POST /api/contracts/` (multipart/form‑data, max 20 MB).
-* **Chat** – `POST /api/conversations/` creates a session; `GET /api/conversations/{id}/stream` streams SSE answers.
-* **Example cURL**
-  ```bash
-  curl -X POST http://localhost:8000/api/auth/login \
-       -H "Content-Type: application/json" \
-       -d '{"email":"you@example.com","password":"Secret123"}'
-  ```
-
----
-
-## AI Contract Analysis Workflow
-1. **Ingestion** – PDF/DOCX → text extraction → chunking (≈500 tokens, 50‑token overlap) → store in PostgreSQL and Qdrant.
-2. **Hybrid Retrieval** –
-   * **Dense leg** – query embedded, filtered by `user_id` payload, searched in Qdrant.
-   * **Lexical leg** – PostgreSQL `ts_rank` full‑text search.
-   * **Fusion** – RRF merges the two ranked lists.
-3. **Reranking** – Cross‑Encoder re‑scores top‑K candidates → final top‑5.
-4. **Prompt Assembly** – selected chunks labeled `[S1]…[S5]` are inserted into a system prompt that tells the LLM to cite sources.
-5. **LLM Generation** – Groq Llama‑3‑8B streams tokens via SSE; citations are parsed and attached to the response.
-6. **Persistence** – answer + citations saved to `conversation` table; UI highlights source snippets on click.
-
----
-
-## Testing & CI
 ```bash
-# Run the full test suite inside Docker
-docker compose exec api pytest
+docker compose up --build
 ```
-All tests (unit, integration, contract‑AI) must pass before merging. CI pipelines can use the same Docker Compose commands.
+
+Brings up PostgreSQL, Redis, Qdrant and the API together. `docker-compose.yml`
+overrides the connection URLs, so the same code picks up the real services.
 
 ---
 
-## Contribution Guide
-1. **Fork** the repository.
-2. Create a **feature branch**: `git checkout -b feat/awesome-feature`.
-3. Install the dev environment (see *Local Development*).
-4. Follow **PEP‑8** + **Black** formatting (`black .`).
-5. Write **unit tests** for any new logic.
-6. Submit a **pull request** – CI will run the test suite automatically.
+## How retrieval works
+
+**1 · Ingestion** — PDF (PyMuPDF) or DOCX (python-docx) is parsed page by page,
+split into ~500-token chunks with 50-token overlap, and each chunk remembers the
+page it started on. That page number is what makes citations possible.
+
+**2 · Two retrieval legs, run concurrently**
+
+- *Dense* — the question is embedded with `all-MiniLM-L6-v2` (384-dim) and matched
+  by cosine similarity. Good at meaning: "cost" finds "pricing".
+- *Lexical* — PostgreSQL `tsvector` + GIN index, or per-term matching on SQLite.
+  Good at exact strings: contract numbers, party names, `Net 45`.
+
+Neither alone is enough, which is why both run.
+
+**3 · Reciprocal Rank Fusion** — cosine similarity and `ts_rank` live on
+completely different scales, so averaging them is meaningless. RRF discards the
+scores and uses only rank position:
+
+```
+score(d) = Σ  1 / (k + rank(d))        k = 60
+          legs
+```
+
+A chunk both legs rank second beats one a single leg ranks first — agreement
+between independent methods is the signal.
+
+**4 · Cross-encoder rerank** — the bi-encoder above embeds question and chunk
+*separately*, which is fast but loses their interaction. `ms-marco-MiniLM-L-6-v2`
+reads each (question, chunk) pair *together* with full attention. Much more
+accurate, far too slow for the whole corpus — hence retrieve-then-rerank over the
+top candidates only.
+
+**5 · Grounded generation** — the surviving chunks are labelled `[S1]…[S5]` and
+the model is instructed to cite them inline and to say so when the sources don't
+answer the question. Citations are parsed back out and rendered as chips that
+open the source snippet.
 
 ---
 
-## Resume Highlights (Project Summary)  
-> Use these bullet points on a CV when showcasing Contract Buddy.
+## Multi-tenant isolation
 
-- **Designed & implemented** a production‑grade multi‑tenant RAG platform (FastAPI + PostgreSQL + Qdrant) that processes **100 + GB** of contract data with sub‑second latency.
-- **Engineered hybrid retrieval** combining dense vector similarity with PostgreSQL full‑text search, fused via **Reciprocal Rank Fusion (RRF)**, boosting relevance scores by **≈30 %** over single‑mode baselines.
-- Integrated a **local cross‑encoder reranker** (`ms‑marco‑MiniLM‑L‑6‑v2`) for top‑K re‑ranking, achieving **state‑of‑the‑art** QA precision without external API costs.
-- Developed **end‑to‑end contract analysis** pipeline: PDF/DOCX parsing → chunking → embedding → vector upsert → AI‑driven extraction of health score, risk score, missing clauses, obligations, payments, parties, auto‑tags, action items, compliance flags.
-- Implemented **JWT authentication**, **Redis‑backed token revocation**, and **rate‑limiting** for secure, scalable multi‑user access.
-- Authored **Docker‑Compose** orchestration that encapsulates the entire stack (FastAPI, PostgreSQL, Redis, Qdrant) enabling **one‑click deployment** across Windows, macOS, and Linux.
-- Wrote comprehensive **README** and **technical documentation** (architecture diagrams, API guide, deployment steps) adhering to **premium UI/UX standards** (glassmorphism, micro‑animations).
-- Established **CI workflow** with automated migrations, linting, and full test suite execution inside Docker containers.
+Every document, chunk and vector carries a `user_id`, and the filter is applied
+**before** the similarity search, not after:
 
----
+- Qdrant — `user_id` payload filter inside the search request
+- SQL vector store — `WHERE user_id = ...` before any scoring
+- Lexical leg and every repository — `user_id` in the `WHERE` clause
+- A document belonging to another account returns **404**, not 403 — the API
+  doesn't confirm that it exists
 
-## License & Acknowledgements
-This project is released under the **MIT License**. Special thanks to the open‑source community for FastAPI, Qdrant, Sentence‑Transformers, and the Groq API.
+`backend/tests/test_auth.py::TestTenantIsolation` asserts this across documents,
+conversations and admin routes.
 
 ---
 
-*Prepared with a focus on visual excellence, detailed technical depth, and ready‑to‑use resume bullet points.*
+## Stack
+
+| Layer | Choice |
+|---|---|
+| API | FastAPI, Uvicorn, Pydantic v2, SSE for token streaming |
+| Data | SQLAlchemy 2 (async), PostgreSQL or SQLite, Alembic |
+| Vectors | Qdrant, or the built-in SQL store |
+| Models | `all-MiniLM-L6-v2` (embeddings), `ms-marco-MiniLM-L-6-v2` (rerank), Groq `llama-3.3-70b-versatile` (generation) |
+| Cache | Redis — sliding-window rate limits, JWT revocation, status mirror |
+| Frontend | Vanilla HTML/CSS/JS, no build step |
+| CI | GitHub Actions — ruff + pytest on every push |
+
+Providers are selected by environment variable and resolved through
+`app/providers/factory.py`; no business logic imports a vendor SDK directly.
+
+---
+
+## API
+
+Interactive docs at <http://localhost:8000/docs>.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/register` · `/login` · `/refresh` · `/logout` | JWT with refresh-token rotation |
+| `GET` `POST` `DELETE` | `/api/documents` | Upload, list, delete (PDF/DOCX, 20 MB) |
+| `GET` | `/api/documents/{id}/status` | Poll ingestion progress |
+| `POST` | `/api/documents/{id}/summarize` | Map-reduce summary over all chunks |
+| `POST` | `/api/conversations/{id}/messages` | Ask — set `stream:true` for SSE |
+| `PATCH` | `/api/conversations/{id}` | Rename, or scope to specific documents |
+| `POST` | `/api/contracts` | Upload + structured clause analysis |
+| `GET` | `/api/admin/users` · `/stats` | Admin only (403 otherwise) |
+| `GET` | `/health` | Per-dependency status |
+
+```bash
+curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"admin12345"}'
+```
+
+---
+
+## Contract analysis
+
+`POST /api/contracts` extracts parties, obligations, payment terms and value, then
+scores the contract on how many of ten expected clause types are present
+(termination, liability, confidentiality, governing law, dispute resolution, data
+protection, IP, service levels, force majeure, payment).
+
+Every response carries `analysis_source`:
+
+- `"llm"` — the model returned JSON, which is then validated and type-coerced
+  field by field before it touches the database
+- `"rules"` — no LLM configured, so the numbers come from deterministic keyword
+  and regex rules over the document text
+
+The UI badges the two differently. Fields the document doesn't state come back as
+`null` and render as `—`; nothing is filled in with plausible-looking guesses.
+
+---
+
+## Tests
+
+```bash
+cd backend && pytest -q
+```
+
+52 tests, no Docker and no network required — the suite runs on SQLite with the
+SQL vector store and the extractive provider. It covers RRF fusion, chunk overlap
+and page mapping, query tokenising, auth and refresh-token rotation, tenant
+isolation, the full upload → index → cited-answer path, and the contract analysis
+parsing/coercion layer.
+
+```bash
+ruff check app tests
+```
+
+---
+
+## Layout
+
+```
+backend/app/
+  api/v1/        route handlers, one module per resource
+  core/          config, security, logging, exceptions
+  db/            engine, session, Qdrant client, vector store abstraction
+  models/        SQLAlchemy ORM
+  repositories/  query layer, keeps SQL out of route handlers
+  providers/     LLM + embedding adapters behind one interface
+  services/      ingestion, retrieval, generation, summarization, analysis
+frontend/        three pages: login, workspace, admin
+```
+
+---
+
+## Known limits
+
+Worth being upfront about:
+
+- **The SQL vector store scans every row.** Fine for a demo corpus, O(n) per
+  query. Qdrant's HNSW index is the answer at real scale, which is why it's the
+  preferred backend.
+- **Ingestion runs in a FastAPI background task**, so it dies with the process. A
+  production deployment wants Celery or RQ with retries.
+- **Chunking is fixed-size.** Splitting on clause boundaries would keep legal
+  provisions intact and is the obvious next improvement.
+- **No evaluation harness.** Retrieval quality is argued from architecture, not
+  measured — a labelled question set with recall@k would make the claims real.
+- **Rate limiting fails open** when Redis is down. Reasonable for a demo, wrong
+  for a public deployment.
+
+---
+
+## Licence
+
+MIT.

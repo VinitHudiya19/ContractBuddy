@@ -27,7 +27,9 @@ class DocumentRepository:
 
     async def list_for_user(self, user_id: UUID) -> list[Document]:
         result = await self.session.execute(
-            select(Document).where(Document.user_id == user_id).order_by(Document.uploaded_at.desc())
+            select(Document)
+            .where(Document.user_id == user_id)
+            .order_by(Document.uploaded_at.desc())
         )
         return list(result.scalars().all())
 

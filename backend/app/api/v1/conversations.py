@@ -4,14 +4,13 @@ Conversation and message chat endpoints.
 from __future__ import annotations
 
 import json
-import time
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
-from app.core.exceptions import ConversationNotFoundError
+from app.core.exceptions import AppError, ConversationNotFoundError
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal, get_db
 from app.dependencies.auth import get_current_user
@@ -26,6 +25,7 @@ from app.schemas.conversation import (
     AskResponse,
     ConversationCreate,
     ConversationPublic,
+    ConversationUpdate,
     MessagePublic,
 )
 from app.services.generation import build_context, build_messages, used_citations
@@ -64,6 +64,31 @@ async def list_conversations(
 ) -> list[ConversationPublic]:
     repo = ConversationRepository(db)
     return await repo.list_for_user(user.id)
+
+
+@router.patch("/{conversation_id}", response_model=ConversationPublic)
+async def update_conversation(
+    conversation_id: UUID,
+    body: ConversationUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationPublic:
+    """Rename a conversation or change which documents it searches."""
+    repo = ConversationRepository(db)
+    conversation = await repo.get_by_id(conversation_id)
+    if conversation is None or conversation.user_id != user.id:
+        raise ConversationNotFoundError()
+
+    fields = body.model_dump(exclude_unset=True)
+    if "title" in fields and fields["title"]:
+        conversation.title = fields["title"]
+    if "document_scope" in fields:
+        # An empty list means "no filter", stored as NULL.
+        conversation.document_scope = fields["document_scope"] or None
+
+    await db.commit()
+    await db.refresh(conversation)
+    return ConversationPublic.model_validate(conversation)
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessagePublic])
@@ -187,10 +212,16 @@ async def _stream_answer(*, conversation_id, user_question, chunks, history):
                 yield {"event": "token", "data": json.dumps({"t": token})}
         except Exception as exc:
             logger.error("stream generation failed", exc_info=exc)
+            # AppError messages are written for users and carry no internals, so
+            # they are safe to forward; anything else gets the generic text.
+            known = isinstance(exc, AppError)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"code": "LLM_PROVIDER_ERROR", "message": "Generation failed. Please retry."}
+                    {
+                        "code": exc.code if known else "LLM_PROVIDER_ERROR",
+                        "message": exc.message if known else "Generation failed. Please retry.",
+                    }
                 ),
             }
             return

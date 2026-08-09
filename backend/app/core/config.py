@@ -8,18 +8,29 @@ from here, so a single `.env` change swaps providers. See `.env.example`.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# config.py → core → app → backend → repo root
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_REPO_ROOT = _BACKEND_DIR.parent
+
+# Absolute paths so settings do not change depending on which directory the
+# process was launched from. Later files win, so the repo-root `.env` is the
+# single source of truth; `backend/.env` is only a legacy fallback.
+_ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
 
 EmbeddingProviderName = Literal["local", "openai", "gemini"]
 LLMProviderName = Literal["groq", "gemini", "openai", "anthropic", "ollama"]
+VectorStoreName = Literal["auto", "qdrant", "sql"]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -35,6 +46,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "document_chunks"
+    # auto = use Qdrant when reachable, else the built-in SQL vector store.
+    vector_store: VectorStoreName = "auto"
 
     # ---- Auth ----
     jwt_secret: str = "change-me"
@@ -76,6 +89,7 @@ class Settings(BaseSettings):
     vector_top_k: int = 15
     keyword_top_k: int = 15
     rerank_top_k: int = 5
+    rerank_enabled: bool = True
 
     # ---- Rate limiting ----
     rate_limit_requests: int = 60
@@ -97,6 +111,36 @@ class Settings(BaseSettings):
     @property
     def max_upload_size_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
+
+    @property
+    def resolved_database_url(self) -> str:
+        """
+        Same database no matter where the process was started from.
+
+        A relative SQLite path (`sqlite+aiosqlite:///./app.db`) resolves against
+        the current working directory, which silently creates a second, empty
+        database when the app is launched from a different folder. Anchor it to
+        the backend package instead.
+        """
+        url = self.database_url
+        prefix, sep, path = url.partition(":///")
+        if not sep or not prefix.startswith("sqlite") or path.startswith("/"):
+            return url
+        if path == ":memory:" or path.startswith(":memory:"):
+            return url
+        return f"{prefix}:///{(_BACKEND_DIR / path).resolve().as_posix()}"
+
+    @property
+    def upload_path(self) -> Path:
+        """Absolute staging directory for in-flight uploads."""
+        path = Path(self.upload_dir)
+        if not path.is_absolute():
+            path = _BACKEND_DIR / path
+        return path
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.database_url.startswith("sqlite")
 
     @property
     def is_production(self) -> bool:

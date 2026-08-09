@@ -54,8 +54,9 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # Root context so the image can include frontend/ as well as backend/.
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: ragqa_api
     env_file:
       - .env

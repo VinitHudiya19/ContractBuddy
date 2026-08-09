@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import UUID
 
-from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -42,6 +41,9 @@ class Contract(Base):
     priority: Mapped[str | None] = mapped_column(String(20), default="Medium", nullable=True)
 
     # --- AI Analysis & Extractions ---
+    # "llm" when a model produced the analysis, "rules" when the deterministic
+    # text heuristics did. Surfaced in the UI so the two are never confused.
+    analysis_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
     health_score: Mapped[int | None] = mapped_column(Integer, default=80, nullable=True)
     risk_score: Mapped[int | None] = mapped_column(Integer, default=20, nullable=True)
     missing_clauses: Mapped[str | None] = mapped_column(Text, nullable=True)      # JSON list

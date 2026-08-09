@@ -3,45 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Document Q&A - Login</title>
-    <!-- Google Fonts: Outfit for headings, Inter for body -->
+    <title>Contract Buddy - Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="auth-page">
-    <!-- Custom background glows -->
-    <div class="glow-bg bg-purple"></div>
-    <div class="glow-bg bg-blue"></div>
-
     <div class="auth-container">
-        <!-- Logo and Title -->
         <div class="brand">
             <div class="brand-logo">
-                <i class="fa-solid fa-brain-circuit"></i>
+                <i class="fa-solid fa-file-contract"></i>
             </div>
-            <h1>DocuIntel</h1>
-            <p>Multi-Tenant RAG Document Q&A System</p>
+            <h1>Contract Buddy</h1>
+            <p>AI-Powered Document Q&A System</p>
         </div>
 
-        <!-- Glass container card for login/register forms -->
-        <div class="auth-card glass">
-            <!-- Form Tabs -->
+        <div class="auth-card">
             <div class="auth-tabs">
                 <button class="tab-btn active" id="login-tab">Sign In</button>
                 <button class="tab-btn" id="register-tab">Register</button>
             </div>
 
-            <!-- Error message container -->
             <div id="error-alert" class="alert alert-danger hidden">
                 <i class="fa-solid fa-circle-exclamation"></i>
                 <span id="error-message">Something went wrong</span>
             </div>
 
-            <!-- Success message container -->
             <div id="success-alert" class="alert alert-success hidden">
                 <i class="fa-solid fa-circle-check"></i>
                 <span>Registration successful! Please sign in.</span>
@@ -53,18 +42,16 @@
                     <label for="login-email">Email Address</label>
                     <div class="input-wrapper">
                         <i class="fa-regular fa-envelope input-icon"></i>
-                        <input type="email" id="login-email" required placeholder="name@example.com">
+                        <input type="email" id="login-email" required placeholder="you@example.com">
                     </div>
                 </div>
-                
                 <div class="form-group">
                     <label for="login-password">Password</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-lock input-icon"></i>
-                        <input type="password" id="login-password" required placeholder="Enter password">
+                        <input type="password" id="login-password" required placeholder="Enter your password">
                     </div>
                 </div>
-
                 <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
                     <span>Sign In</span>
                     <i class="fa-solid fa-arrow-right"></i>
@@ -77,18 +64,16 @@
                     <label for="reg-name">Full Name</label>
                     <div class="input-wrapper">
                         <i class="fa-regular fa-user input-icon"></i>
-                        <input type="text" id="reg-name" placeholder="John Doe">
+                        <input type="text" id="reg-name" placeholder="Your full name">
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="reg-email">Email Address</label>
                     <div class="input-wrapper">
                         <i class="fa-regular fa-envelope input-icon"></i>
-                        <input type="email" id="reg-email" placeholder="name@example.com">
+                        <input type="email" id="reg-email" placeholder="you@example.com">
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="reg-password">Password</label>
                     <div class="input-wrapper">
@@ -96,7 +81,6 @@
                         <input type="password" id="reg-password" placeholder="At least 8 characters">
                     </div>
                 </div>
-
                 <button type="submit" class="btn btn-primary btn-block" id="btn-register-submit">
                     <span>Create Account</span>
                     <i class="fa-solid fa-user-plus"></i>
@@ -105,7 +89,6 @@
         </div>
     </div>
 
-    <!-- JS Files -->
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
 </body>

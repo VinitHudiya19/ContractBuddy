@@ -16,6 +16,16 @@ class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
 
 
+class ConversationUpdate(BaseModel):
+    """
+    Partial update. `document_scope: []` and `null` both mean "search
+    everything", so the UI can clear a filter without deleting the chat.
+    """
+
+    document_scope: list[UUID] | None = Field(default=None, max_length=50)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+
+
 class ConversationPublic(BaseModel):
     id: UUID
     title: str

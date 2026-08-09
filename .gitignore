@@ -40,3 +40,9 @@ models_cache/
 .DS_Store
 Thumbs.db
 *.log
+
+# ---- Agent / editor config ----
+.claude/
+
+# ---- Local database ----
+*.db

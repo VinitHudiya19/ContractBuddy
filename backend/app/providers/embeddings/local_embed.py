@@ -1,6 +1,7 @@
 """
 Local sentence-transformers embedding helper.
-Loads the model lazily on first use and runs encoding in a background thread so we don't block asyncio event loop.
+Loads the model lazily on first use and runs encoding in a worker thread so
+the asyncio event loop is never blocked.
 """
 from __future__ import annotations
 

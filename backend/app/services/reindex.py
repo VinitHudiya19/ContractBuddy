@@ -13,8 +13,8 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.core.logging import get_logger
-from app.db import qdrant_client
 from app.db.session import AsyncSessionLocal
+from app.db.vector_store import get_vector_store
 from app.models.document import Document, DocumentChunk
 from app.models.enums import DocumentStatus
 from app.providers.factory import get_embedder
@@ -46,26 +46,40 @@ async def reindex_document(document_id: UUID) -> None:
             if not chunks:
                 raise ValueError("Document has no chunks to reindex.")
 
-            await qdrant_client.delete_by_document(document_id)
+            # Snapshot what we need, then release the transaction: everything
+            # below is slow model/network work and must not hold the database.
+            user_id, doc_id = str(document.user_id), str(document.id)
+            points = [
+                {
+                    "id": str(chunk.qdrant_point_id),
+                    "chunk_id": str(chunk.id),
+                    "content": chunk.content,
+                    "page_number": chunk.page_number,
+                }
+                for chunk in chunks
+            ]
+            await session.commit()
+
+            await get_vector_store().delete_by_document(document_id)
 
             embedder = get_embedder()
-            for i in range(0, len(chunks), _EMBED_BATCH):
-                batch = chunks[i : i + _EMBED_BATCH]
-                vectors = await embedder.embed([c.content for c in batch])
-                await qdrant_client.upsert_chunks(
+            for i in range(0, len(points), _EMBED_BATCH):
+                batch = points[i : i + _EMBED_BATCH]
+                vectors = await embedder.embed([p["content"] for p in batch])
+                await get_vector_store().upsert(
                     [
                         {
-                            "id": str(chunk.qdrant_point_id),
+                            "id": p["id"],
                             "vector": vector,
                             "payload": {
-                                "user_id": str(document.user_id),
-                                "document_id": str(document.id),
-                                "chunk_id": str(chunk.id),
-                                "page_number": chunk.page_number,
-                                "content_preview": chunk.content[:_PREVIEW_CHARS],
+                                "user_id": user_id,
+                                "document_id": doc_id,
+                                "chunk_id": p["chunk_id"],
+                                "page_number": p["page_number"],
+                                "content_preview": p["content"][:_PREVIEW_CHARS],
                             },
                         }
-                        for chunk, vector in zip(batch, vectors)
+                        for p, vector in zip(batch, vectors, strict=True)
                     ]
                 )
 

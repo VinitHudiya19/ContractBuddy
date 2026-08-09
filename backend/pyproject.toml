@@ -1,5 +1,9 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Keeps the async engine built once in conftest bound to the loop the tests run
+# on. Set here rather than via a module-level pytestmark, which would also tag
+# the sync tests and emit a warning for each one.
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = ["ignore::DeprecationWarning"]
@@ -10,4 +14,12 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+ignore = [
+  "B008",   # FastAPI Depends() in argument defaults is the documented pattern
+  "UP042",  # `str, Enum` is deliberate: SQLAlchemy's Enum type and Pydantic
+            # both round-trip these by value; StrEnum changes that behaviour
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic revisions are generated, wide-column DDL; wrapping them hurts review.
+"app/db/migrations/versions/*.py" = ["E501"]

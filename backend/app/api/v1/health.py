@@ -1,5 +1,10 @@
 """
-Liveness check endpoint.
+Health endpoint.
+
+Distinguishes *required* dependencies (the database and the active vector store)
+from *optional* ones (Redis). Reporting "degraded" because an optional service
+is absent would make a perfectly functional local install look broken, so
+optional services are reported but do not by themselves fail the check.
 """
 from __future__ import annotations
 
@@ -8,9 +13,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db import qdrant_client
 from app.db.redis_client import get_redis
 from app.db.session import get_db
+from app.db.vector_store import get_vector_store
 
 router = APIRouter(tags=["health"])
 
@@ -19,23 +24,29 @@ router = APIRouter(tags=["health"])
 async def health(db: AsyncSession = Depends(get_db)) -> dict:
     try:
         await db.execute(text("SELECT 1"))
-        postgres_ok = True
+        database_ok = True
     except Exception:
-        postgres_ok = False
+        database_ok = False
 
     try:
         redis_ok = bool(await get_redis().ping())
     except Exception:
         redis_ok = False
 
-    qdrant_ok = await qdrant_client.health_check()
+    store = get_vector_store()
+    vector_ok = await store.health_check()
 
     return {
-        "status": "ok" if (postgres_ok and redis_ok and qdrant_ok) else "degraded",
+        "status": "ok" if (database_ok and vector_ok) else "degraded",
         "dependencies": {
-            "postgres": postgres_ok,
-            "redis": redis_ok,
-            "qdrant": qdrant_ok,
+            "database": {
+                "ok": database_ok,
+                "engine": "sqlite" if settings.is_sqlite else "postgresql",
+                "required": True,
+            },
+            "vector_store": {"ok": vector_ok, "backend": store.name, "required": True},
+            # Rate limiting and cached document status degrade gracefully.
+            "redis": {"ok": redis_ok, "required": False},
         },
         "providers": {
             "llm": settings.llm_provider,

@@ -3,12 +3,11 @@ Document upload, listing, deletion, and summarization endpoints.
 """
 from __future__ import annotations
 
-import re
 import uuid as uuidlib
 from uuid import UUID
 
 import anyio
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -17,14 +16,13 @@ from app.core.exceptions import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from app.db import qdrant_client
 from app.db.redis_client import get_redis
 from app.db.session import get_db
+from app.db.vector_store import get_vector_store
 from app.dependencies.auth import get_current_user
 from app.dependencies.rate_limit import ai_rate_limit, rate_limit
 from app.models.enums import DocumentStatus, FileType
 from app.models.user import User
-from app.providers.factory import get_embedder
 from app.repositories.document_repo import DocumentRepository
 from app.schemas.document import (
     DocumentPublic,
@@ -62,7 +60,7 @@ async def upload_document(
     ext = ".pdf" if _ALLOWED[mime] is FileType.pdf else ".docx"
     file_id = uuidlib.uuid4()
     sys_name = f"{file_id}{ext}"
-    path = upload_dir / sys_name
+    path = upload_dir() / sys_name
 
     # Write file to disk checking size limits
     size = 0
@@ -70,9 +68,11 @@ async def upload_document(
         while chunk := await file.read(65536):
             size += len(chunk)
             if size > settings.max_upload_size_bytes:
-                # Remove file if too large
+                # Remove the partial file before rejecting.
                 await anyio.Path(path).unlink(missing_ok=True)
-                raise FileTooLargeError("File exceeds 15MB upload limit.")
+                raise FileTooLargeError(
+                    f"File exceeds the {settings.max_upload_size_mb}MB upload limit."
+                )
             await f.write(chunk)
 
     # Save metadata to database
@@ -110,16 +110,19 @@ async def get_document_status(
     if document is None:
         raise DocumentNotFoundError()
 
-    # Check status from Redis mirror or DB
-    redis = get_redis()
-    status = await redis.get(f"doc:status:{document_id}")
-    if status is not None:
-        reason = await redis.get(f"doc:error:{document_id}")
-        return DocumentStatusResponse(
-            id=document_id,
-            status=DocumentStatus(status),
-            error_reason=reason,
-        )
+    # Redis mirrors the live status so polling doesn't hit the database; the
+    # key must match the one ingestion writes. Fall through to the row whenever
+    # Redis is absent or has nothing for this document.
+    try:
+        cached = await get_redis().get(f"doc_status:{document_id}")
+        if cached is not None:
+            return DocumentStatusResponse(
+                id=document_id,
+                status=DocumentStatus(cached),
+                error_reason=document.error_reason,
+            )
+    except Exception:
+        pass  # Redis is optional — the database row is the source of truth.
 
     return DocumentStatusResponse(
         id=document_id,
@@ -138,8 +141,14 @@ async def delete_document(
     document = await repo.get_owned(document_id, user.id)
     if document is None:
         raise DocumentNotFoundError()
+
+    # Drop the vectors first. The vector store runs on its own connection, so
+    # calling it while this request holds an uncommitted write would deadlock
+    # against itself on SQLite. Orphaned vectors (if this crashes midway) are
+    # harmless — retrieval only surfaces chunks whose document row still exists.
+    await get_vector_store().delete_by_document(document_id)
+
     await repo.delete(document)
-    await qdrant_client.delete_by_document(document_id)
     await db.commit()
 
 

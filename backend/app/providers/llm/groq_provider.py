@@ -7,12 +7,23 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from app.core.config import settings
-from app.core.exceptions import LLMProviderError
+from app.core.exceptions import LLMProviderError, LLMRateLimitError
 from app.providers.llm.base import LLMMessage, LLMProvider, LLMResult
+
+
+def _wrap(exc: Exception, action: str) -> LLMProviderError:
+    """Turn an SDK error into ours, keeping rate limits distinguishable."""
+    if getattr(exc, "status_code", None) == 429 or "rate limit" in str(exc).lower():
+        return LLMRateLimitError()
+    return LLMProviderError(f"Groq {action} failed: {exc}")
 
 
 class GroqProvider(LLMProvider):
     name = "groq"
+
+    # Published rates for llama-3.3-70b-versatile at time of writing.
+    input_cost_per_million = 0.59
+    output_cost_per_million = 0.79
 
     def __init__(self) -> None:
         if not settings.groq_api_key:
@@ -39,7 +50,7 @@ class GroqProvider(LLMProvider):
                 max_tokens=max_tokens,
             )
         except Exception as exc:
-            raise LLMProviderError(f"Groq request failed: {exc}") from exc
+            raise _wrap(exc, "request") from exc
 
         usage = resp.usage
         return LLMResult(
@@ -66,4 +77,4 @@ class GroqProvider(LLMProvider):
                 if delta:
                     yield delta
         except Exception as exc:
-            raise LLMProviderError(f"Groq stream failed: {exc}") from exc
+            raise _wrap(exc, "stream") from exc

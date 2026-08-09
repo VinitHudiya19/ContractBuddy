@@ -1,3 +1,10 @@
+> ⚠️ **OUT OF DATE — kept only for history. Do not share this file.**
+> It describes a past refactor whose decisions have since been reversed: the
+> SQLite fallback and the in-process keyword search it says were *removed* are
+> both back, deliberately, so the project runs without Docker.
+> Current docs: [README.md](README.md) and
+> [INTERVIEW_PREP_GUIDE.md](INTERVIEW_PREP_GUIDE.md).
+
 # Walkthrough — RAG Q&A System Simplified & Polished
 
 We have successfully simplified and cleaned up the RAG system to align with your latest production directives. Below is a detailed walkthrough of all the modifications made.
