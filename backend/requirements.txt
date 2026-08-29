@@ -37,22 +37,15 @@ python-docx==1.1.2
 torch==2.5.1+cpu
 sentence-transformers==3.3.1
 
-# ---- LLM providers (pluggable; all optional at runtime) ----
+# ---- Imported directly by app code, so pinned rather than left transitive ----
+anyio==4.14.1
+numpy==2.5.1
+
+# ---- LLM provider ----
+# Only Groq is implemented; the provider interface in app/providers/llm/base.py
+# is what makes others pluggable, not a pile of unused SDKs.
 groq==0.13.1
-google-generativeai==0.8.3
-openai==1.58.1
-anthropic==0.42.0
 httpx==0.28.1
-
-# ---- Retrieval helpers ----
-rank-bm25==0.2.2
-
-# ---- Reliability ----
-tenacity==9.0.0
-
-# ---- Observability ----
-prometheus-client==0.21.1
-structlog==24.4.0
 
 # ---- Testing ----
 pytest==8.3.4

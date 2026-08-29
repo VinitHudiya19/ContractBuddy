@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # config.py → core → app → backend → repo root
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # ---- App ----
     app_env: str = "development"
     log_level: str = "INFO"
-    app_name: str = "AI Document Q&A System"
+    app_name: str = "Contract Buddy"
 
     # ---- Infrastructure ----
     database_url: str = "sqlite+aiosqlite:///./contractbuddy.db"
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-20b"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
     openai_api_key: str = ""
@@ -103,6 +103,34 @@ class Settings(BaseSettings):
     @classmethod
     def _strip_origins(cls, v: str) -> str:
         return v.strip()
+
+    @model_validator(mode="after")
+    def _reject_insecure_production_defaults(self) -> Settings:
+        """
+        Refuse to boot with development defaults when APP_ENV=production.
+
+        The defaults exist so a clean checkout runs with no configuration, which
+        means a forgotten env var deploys a public app with a known JWT signing
+        key. Failing at startup is the only point where that is still cheap to
+        fix; a warning in the logs would be missed.
+        """
+        if not self.is_production:
+            return self
+
+        problems = []
+        if self.jwt_secret == "change-me":
+            problems.append("JWT_SECRET is still the default — anyone can forge tokens")
+        if "*" in self.cors_origin_list:
+            problems.append("CORS_ORIGINS contains '*' — list your real frontend origin")
+        if self.bootstrap_admin_password == "admin12345":
+            problems.append("BOOTSTRAP_ADMIN_PASSWORD is still the default")
+
+        if problems:
+            raise ValueError(
+                "Refusing to start with APP_ENV=production:\n  - "
+                + "\n  - ".join(problems)
+            )
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

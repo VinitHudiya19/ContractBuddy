@@ -1,3 +1,3 @@
-"""AI Document Q&A System — backend application package."""
+"""Contract Buddy — backend application package."""
 
 __version__ = "1.0.0"

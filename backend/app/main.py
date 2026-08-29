@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=__version__,
-    description="Multi-tenant RAG Document Q&A backend service",
+    description="Contract Q&A over your own PDF and DOCX contracts, with page-level citations",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url=None,

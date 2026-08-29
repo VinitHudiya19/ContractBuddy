@@ -61,6 +61,44 @@ overrides the connection URLs, so the same code picks up the real services.
 
 ---
 
+## Deploying
+
+The image is a plain Docker image with no platform-specific configuration, so
+anywhere that runs a container will do. There are two shapes:
+
+**Single container.** No external services — SQLite and the built-in vector
+store carry the whole app. Good for a demo box or a small VM:
+
+```bash
+docker build -f backend/Dockerfile -t contractbuddy .
+```
+
+Then run it with the production settings applied:
+
+```bash
+docker run -p 8000:8000 -e APP_ENV=production -e JWT_SECRET="$(openssl rand -hex 32)" -e CORS_ORIGINS=https://your-domain.com -e BOOTSTRAP_ADMIN_PASSWORD=pick-a-real-one -e GROQ_API_KEY=gsk_your_key contractbuddy
+```
+
+**With managed services.** Point the same image at real infrastructure by
+setting `DATABASE_URL`, `REDIS_URL` and `QDRANT_URL`. Nothing else changes —
+`docker-compose.yml` is the worked example.
+
+With `APP_ENV=production` the app refuses to start on development defaults: a
+`change-me` JWT secret, a `*` in `CORS_ORIGINS`, or the stock admin password.
+That is deliberate — those defaults exist so a clean checkout runs with no
+configuration, and a forgotten environment variable would otherwise ship a
+public app with a known signing key.
+
+Migrations and the admin seed run from the entrypoint on every start, so a
+deploy is just a restart.
+
+**What it needs.** Roughly 600 MB of RAM once the embedding and reranker models
+are resident, and a ~2 GB image — CPU torch is most of it. That rules out the
+512 MB free tiers. Setting `RERANK_ENABLED=false` drops the cross-encoder and
+some of that memory, at a cost in answer quality.
+
+---
+
 ## How retrieval works
 
 **1 · Ingestion** — PDF (PyMuPDF) or DOCX (python-docx) is parsed page by page,
@@ -124,13 +162,16 @@ conversations and admin routes.
 | API | FastAPI, Uvicorn, Pydantic v2, SSE for token streaming |
 | Data | SQLAlchemy 2 (async), PostgreSQL or SQLite, Alembic |
 | Vectors | Qdrant, or the built-in SQL store |
-| Models | `all-MiniLM-L6-v2` (embeddings), `ms-marco-MiniLM-L-6-v2` (rerank), Groq `llama-3.3-70b-versatile` (generation) |
+| Models | `all-MiniLM-L6-v2` (embeddings), `ms-marco-MiniLM-L-6-v2` (rerank), Groq `openai/gpt-oss-20b` (generation) |
 | Cache | Redis — sliding-window rate limits, JWT revocation, status mirror |
 | Frontend | Vanilla HTML/CSS/JS, no build step |
 | CI | GitHub Actions — ruff + pytest on every push |
 
-Providers are selected by environment variable and resolved through
-`app/providers/factory.py`; no business logic imports a vendor SDK directly.
+No business logic imports a vendor SDK directly — everything asks
+`app/providers/factory.py` for an `LLMProvider`. Groq is the implemented
+provider; without a key the factory returns the extractive one instead, which is
+what keeps the app usable on a clean checkout. Adding another provider means one
+new class behind the same interface, not changes to the call sites.
 
 ---
 

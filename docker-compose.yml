@@ -1,5 +1,5 @@
 # =============================================================================
-#  AI Document Q&A System — local orchestration
+#  Contract Buddy — local orchestration
 #  Services: api (FastAPI), postgres, redis, qdrant.
 #  Bring up with:  docker compose up --build
 #  The API waits (via /health) for its dependencies to be healthy.
@@ -7,7 +7,7 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: ragqa_postgres
+    container_name: contractbuddy_postgres
     environment:
       POSTGRES_USER: raguser
       POSTGRES_PASSWORD: ragpass
@@ -24,7 +24,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ragqa_redis
+    container_name: contractbuddy_redis
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
@@ -38,7 +38,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.12.4
-    container_name: ragqa_qdrant
+    container_name: contractbuddy_qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -57,7 +57,7 @@ services:
       # Root context so the image can include frontend/ as well as backend/.
       context: .
       dockerfile: backend/Dockerfile
-    container_name: ragqa_api
+    container_name: contractbuddy_api
     env_file:
       - .env
     environment:
@@ -76,7 +76,7 @@ services:
         condition: service_started
     volumes:
       - uploads:/app/storage
-      - models_cache:/root/.cache
+      - models_cache:/app/.cache
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
       interval: 10s

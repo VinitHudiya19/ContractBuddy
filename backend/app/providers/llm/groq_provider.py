@@ -1,6 +1,9 @@
 """
-Groq LLM wrapper for Llama-3 models.
-Calls Groq API asynchronously using official python SDK.
+Groq LLM wrapper. Calls the Groq API asynchronously via the official SDK.
+
+The model is read from GROQ_MODEL rather than pinned here: Groq retires hosted
+models with little notice (llama-3.3-70b-versatile disappeared this way), and a
+config value can be changed without a redeploy.
 """
 from __future__ import annotations
 
@@ -21,9 +24,10 @@ def _wrap(exc: Exception, action: str) -> LLMProviderError:
 class GroqProvider(LLMProvider):
     name = "groq"
 
-    # Published rates for llama-3.3-70b-versatile at time of writing.
-    input_cost_per_million = 0.59
-    output_cost_per_million = 0.79
+    # Published rates for openai/gpt-oss-20b at time of writing. Only used for
+    # the usage figures shown in the UI, so drift here is cosmetic.
+    input_cost_per_million = 0.10
+    output_cost_per_million = 0.50
 
     def __init__(self) -> None:
         if not settings.groq_api_key:
