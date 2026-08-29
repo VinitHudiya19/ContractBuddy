@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Applies migrations and seeds the admin account, then hands off to the CMD.
+# Prepares the database, then hands off to the CMD.
 # Idempotent: safe to run on every container start.
 set -e
 
 DB_URL="${DATABASE_URL:-}"
 
-# Only Postgres needs a readiness wait. With SQLite (the default) the database
-# is a local file, so the app can run as a single container with no services
-# attached — which is what makes `docker run` alone a valid deployment.
+# Postgres gets the readiness wait and the Alembic migrations. SQLite gets
+# neither: the schema history contains Postgres-only DDL (a GIN index on the
+# tsvector column), and the app builds its own tables at startup instead. That
+# split is what lets the same image run either as a single container with no
+# services attached, or against managed infrastructure.
 case "$DB_URL" in
   *postgres*)
     echo "[entrypoint] waiting for Postgres..."
@@ -34,17 +36,13 @@ async def wait():
 
 asyncio.run(wait())
 PY
+    echo "[entrypoint] applying migrations..."
+    alembic upgrade head
     ;;
   *)
-    echo "[entrypoint] no Postgres configured — using the local database."
+    echo "[entrypoint] no Postgres configured — the app will create its own schema."
     ;;
 esac
-
-echo "[entrypoint] applying migrations..."
-alembic upgrade head
-
-echo "[entrypoint] seeding bootstrap admin (idempotent)..."
-python -m scripts.seed || echo "[entrypoint] seed skipped (non-fatal)."
 
 echo "[entrypoint] starting: $*"
 exec "$@"

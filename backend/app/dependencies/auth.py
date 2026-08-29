@@ -3,8 +3,9 @@ Auth dependencies.
 
 `get_current_user` validates the bearer access token, checks the Redis logout
 blacklist (by `jti`), loads the user, and confirms the account is active.
-`require_admin` layers an RBAC check on top — every admin route depends on it
-independently (defence in depth, per §12).
+
+Every account is equal: authorisation is ownership, enforced in the repository
+layer by scoping each query to `user_id`.
 """
 from __future__ import annotations
 
@@ -15,12 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import (
     InactiveUserError,
     InvalidTokenError,
-    UnauthorizedAccessError,
 )
 from app.core.security import decode_access_token
 from app.db.redis_client import get_redis
 from app.db.session import get_db
-from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
 
@@ -64,8 +63,3 @@ async def get_current_user(
     request.state.jti = jti
     return user
 
-
-async def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role != UserRole.admin:
-        raise UnauthorizedAccessError("Admin privileges required.")
-    return user

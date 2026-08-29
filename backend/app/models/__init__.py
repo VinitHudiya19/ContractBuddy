@@ -7,7 +7,6 @@ from app.models.enums import (
     DocumentStatus,
     FileType,
     MessageRole,
-    UserRole,
 )
 from app.models.user import RefreshToken, User
 
@@ -18,7 +17,6 @@ __all__ = [
     "DocumentChunk",
     "Conversation",
     "Message",
-    "UserRole",
     "DocumentStatus",
     "FileType",
     "MessageRole",

@@ -6,11 +6,6 @@ from __future__ import annotations
 import enum
 
 
-class UserRole(str, enum.Enum):
-    user = "user"
-    admin = "admin"
-
-
 class DocumentStatus(str, enum.Enum):
     processing = "processing"
     ready = "ready"

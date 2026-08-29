@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_refresh_token
-from app.models.enums import UserRole
 from app.models.user import RefreshToken, User
 
 
@@ -33,13 +32,12 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def create(
-        self, *, email: str, hashed_password: str, full_name: str, role: UserRole = UserRole.user
+        self, *, email: str, hashed_password: str, full_name: str
     ) -> User:
         user = User(
             email=email.lower(),
             hashed_password=hashed_password,
             full_name=full_name,
-            role=role,
         )
         self.session.add(user)
         await self.session.flush()

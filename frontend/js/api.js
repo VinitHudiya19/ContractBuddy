@@ -292,25 +292,6 @@ class ApiClient {
         }
     }
 
-    // --- Admin endpoints ---
-
-    async adminGetUsers(searchQuery) {
-        var path = '/api/admin/users';
-        if (searchQuery) path += '?search=' + encodeURIComponent(searchQuery);
-        return this.request(path);
-    }
-
-    async adminSetUserActive(userId, isActive) {
-        return this.request('/api/admin/users/' + userId, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_active: isActive })
-        });
-    }
-
-    async adminGetStats() {
-        return this.request('/api/admin/stats');
-    }
 }
 
 var api = new ApiClient();

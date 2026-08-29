@@ -1,7 +1,8 @@
 # Contract Buddy
 
-A multi-tenant document Q&A system. Upload a contract, ask questions in plain
-English, and get answers that cite the exact page they came from.
+A document Q&A system. Sign up, upload a contract, ask questions in plain
+English, and get answers that cite the exact page they came from. Every account
+sees only its own documents.
 
 The interesting part is the retrieval: instead of plain vector search, it runs
 **dense semantic search and lexical keyword search in parallel**, fuses the two
@@ -33,7 +34,8 @@ cd backend && python -m venv .venv && .venv/Scripts/activate && pip install -r r
 ```
 
 On macOS/Linux use `source .venv/bin/activate` instead. Then open
-<http://localhost:8000> and sign in with `admin@example.com` / `admin12345`.
+<http://localhost:8000> and create an account — sign-up is open, and a new
+account starts empty.
 
 That works because every external dependency has a built-in fallback:
 
@@ -76,7 +78,7 @@ docker build -f backend/Dockerfile -t contractbuddy .
 Then run it with the production settings applied:
 
 ```bash
-docker run -p 8000:8000 -e APP_ENV=production -e JWT_SECRET="$(openssl rand -hex 32)" -e CORS_ORIGINS=https://your-domain.com -e BOOTSTRAP_ADMIN_PASSWORD=pick-a-real-one -e GROQ_API_KEY=gsk_your_key contractbuddy
+docker run -p 8000:8000 -e APP_ENV=production -e JWT_SECRET="$(openssl rand -hex 32)" -e CORS_ORIGINS=https://your-domain.com -e GROQ_API_KEY=gsk_your_key contractbuddy
 ```
 
 **With managed services.** Point the same image at real infrastructure by
@@ -84,13 +86,14 @@ setting `DATABASE_URL`, `REDIS_URL` and `QDRANT_URL`. Nothing else changes —
 `docker-compose.yml` is the worked example.
 
 With `APP_ENV=production` the app refuses to start on development defaults: a
-`change-me` JWT secret, a `*` in `CORS_ORIGINS`, or the stock admin password.
+`change-me` JWT secret, or a `*` in `CORS_ORIGINS`.
 That is deliberate — those defaults exist so a clean checkout runs with no
 configuration, and a forgotten environment variable would otherwise ship a
 public app with a known signing key.
 
-Migrations and the admin seed run from the entrypoint on every start, so a
-deploy is just a restart.
+Against Postgres the entrypoint applies migrations on every start, so a deploy
+is just a restart. On SQLite the app creates its own schema instead — the
+migration history contains Postgres-only DDL.
 
 **What it needs.** Roughly 600 MB of RAM once the embedding and reranker models
 are resident, and a ~2 GB image — CPU torch is most of it. That rules out the
@@ -139,7 +142,7 @@ open the source snippet.
 
 ---
 
-## Multi-tenant isolation
+## Account isolation
 
 Every document, chunk and vector carries a `user_id`, and the filter is applied
 **before** the similarity search, not after:
@@ -150,8 +153,8 @@ Every document, chunk and vector carries a `user_id`, and the filter is applied
 - A document belonging to another account returns **404**, not 403 — the API
   doesn't confirm that it exists
 
-`backend/tests/test_auth.py::TestTenantIsolation` asserts this across documents,
-conversations and admin routes.
+`backend/tests/test_auth.py::TestTenantIsolation` asserts this across documents
+and conversations, including that a newly created account sees nothing.
 
 ---
 
@@ -188,11 +191,10 @@ Interactive docs at <http://localhost:8000/docs>.
 | `POST` | `/api/conversations/{id}/messages` | Ask — set `stream:true` for SSE |
 | `PATCH` | `/api/conversations/{id}` | Rename, or scope to specific documents |
 | `POST` | `/api/contracts` | Upload + structured clause analysis |
-| `GET` | `/api/admin/users` · `/stats` | Admin only (403 otherwise) |
 | `GET` | `/health` | Per-dependency status |
 
 ```bash
-curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"admin12345"}'
+curl -X POST http://localhost:8000/api/auth/register -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"a-strong-password","full_name":"Your Name"}'
 ```
 
 ---
@@ -245,7 +247,7 @@ backend/app/
   repositories/  query layer, keeps SQL out of route handlers
   providers/     LLM + embedding adapters behind one interface
   services/      ingestion, retrieval, generation, summarization, analysis
-frontend/        three pages: login, workspace, admin
+frontend/        two pages: login and workspace
 ```
 
 ---

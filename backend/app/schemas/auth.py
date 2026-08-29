@@ -6,8 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.enums import UserRole
-
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -35,7 +33,6 @@ class UserPublic(BaseModel):
     id: UUID
     email: EmailStr
     full_name: str
-    role: UserRole
     is_active: bool
     created_at: datetime
 

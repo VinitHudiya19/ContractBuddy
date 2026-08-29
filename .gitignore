@@ -45,4 +45,11 @@ Thumbs.db
 .claude/
 
 # ---- Local database ----
+# Also covers sidecars and hand-made backups (contractbuddy.db.bak), which hold
+# the same password hashes as the database itself.
 *.db
+*.db.*
+*.sqlite
+*.sqlite3
+
+INTERVIEW_PREP_GUIDE.md/

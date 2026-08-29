@@ -26,8 +26,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     var btnNewConvo = el('btn-new-convo');
     var userInitials = el('user-avatar-initials');
     var userName = el('user-display-name');
-    var userRole = el('user-display-role');
-    var btnAdminPanel = el('btn-admin-panel');
+    var userEmail = el('user-display-email');
     var btnLogout = el('btn-logout');
 
     var convoTitle = el('active-convo-title');
@@ -80,7 +79,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         out = out.replace(/`(.+?)`/g, '<code>$1</code>');
         out = out.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
         out = out.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
-        out = out.replace(/\[S(\d+)\]/g, '<span class="citation-ref">[S$1]</span>');
+        // Some models emit the fullwidth bracket pair instead of the ASCII one
+        // the prompt asks for; both are normalised to a single chip style here.
+        out = out.replace(/[[【]\s*S(\d+)\s*[\]】]/g, '<span class="citation-ref">[S$1]</span>');
         out = out.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
         // The line-break pass above also hits the newlines *between* list
         // items, leaving stray <br> inside the <ul>. Strip those: <ul> spacing
@@ -122,20 +123,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     try {
         currentUser = await api.getMe();
         userName.textContent = currentUser.full_name;
-        userRole.textContent = currentUser.role === 'admin' ? 'Administrator' : 'User';
+        userEmail.textContent = currentUser.email;
         userInitials.textContent = currentUser.full_name
             .split(' ')
             .map(function (n) { return n[0]; })
             .join('')
             .substring(0, 2)
             .toUpperCase();
-
-        if (currentUser.role === 'admin') {
-            btnAdminPanel.classList.remove('hidden');
-            btnAdminPanel.addEventListener('click', function () {
-                window.location.href = 'admin.html';
-            });
-        }
 
         await loadConversations();
         await loadDocuments();

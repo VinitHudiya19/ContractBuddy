@@ -13,14 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api.v1 import admin, auth, contracts, conversations, documents, health, users
+from app.api.v1 import auth, contracts, conversations, documents, health, users
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.db.redis_client import close_redis
 from app.db.session import create_tables_if_missing
 from app.db.vector_store import close_vector_store, init_vector_store
 from app.middleware.error_handler import register_exception_handlers
-from app.services.bootstrap import ensure_admin_user, warm_models
+from app.services.bootstrap import warm_models
 
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -45,7 +45,6 @@ async def lifespan(app: FastAPI):
 
     # Picks Qdrant when reachable, otherwise the built-in SQL vector store.
     store = await init_vector_store()
-    await ensure_admin_user()
 
     # Detached: the API serves immediately while the models load in the
     # background, so the first question doesn't pay the model load.
@@ -90,7 +89,6 @@ app.include_router(users.router)
 app.include_router(documents.router)
 app.include_router(documents.reindex_router)
 app.include_router(conversations.router)
-app.include_router(admin.router)
 app.include_router(contracts.router)
 
 # Serve the static UI from the same origin as the API, which keeps CORS out of

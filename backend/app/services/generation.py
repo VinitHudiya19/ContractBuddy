@@ -86,7 +86,10 @@ def build_messages(
     return messages
 
 
-_MARKER_RE = re.compile(r"\[S(\d+)\]")
+# Models do not all honour the ASCII brackets the prompt asks for — some emit
+# the fullwidth CJK pair instead. Accepting both keeps citation filtering
+# working across providers rather than silently falling back to "show all".
+_MARKER_RE = re.compile(r"[\[【]\s*S(\d+)\s*[\]】]")
 
 
 def used_citations(answer: str, citations: list[Citation]) -> list[Citation]:

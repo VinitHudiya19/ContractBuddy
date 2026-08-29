@@ -230,11 +230,12 @@ Each one is defensible against the code:
 ## Demo script (3 minutes)
 
 1. Start the server — point out `/health` showing which backends resolved.
-2. Log in, upload a contract PDF, show the status go `processing → ready`.
+2. Sign up, upload a contract PDF, show the status go `processing → ready`.
 3. Ask "What are the payment terms?" and let the answer stream in.
 4. **Click a citation chip.** This is the moment: the exact source snippet and
    page number. That's what separates it from a chatbot.
 5. Contracts tab → missing-clause detection and the `analysis_source` badge.
-6. Admin tab → per-user document and query counts, i.e. multi-tenancy is real.
+6. Sign up as a second account in a private window — it sees none of the first
+   account's documents. Isolation is enforced in the query, not the UI.
 
 Have a contract PDF ready on the desktop. Don't hunt for a file on a call.

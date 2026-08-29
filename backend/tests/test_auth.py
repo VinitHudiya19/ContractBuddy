@@ -144,7 +144,13 @@ class TestTenantIsolation:
             )
         ).status_code == 404
 
-    async def test_admin_endpoints_reject_regular_users(self, client, user_factory):
-        headers, _ = await user_factory()
-        assert (await client.get("/api/admin/users", headers=headers)).status_code == 403
-        assert (await client.get("/api/admin/stats", headers=headers)).status_code == 403
+    async def test_new_account_sees_nothing_from_other_accounts(self, client, user_factory):
+        """A fresh sign-up starts empty regardless of what other accounts hold."""
+        alice_headers, _ = await user_factory()
+        await client.post(
+            "/api/conversations", headers=alice_headers, json={"title": "Alice private"}
+        )
+
+        bob_headers, _ = await user_factory()
+        assert (await client.get("/api/conversations", headers=bob_headers)).json() == []
+        assert (await client.get("/api/documents", headers=bob_headers)).json() == []

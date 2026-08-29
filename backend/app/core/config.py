@@ -95,10 +95,6 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60
 
-    # ---- Bootstrap admin ----
-    bootstrap_admin_email: str = "admin@example.com"
-    bootstrap_admin_password: str = "admin12345"
-
     @field_validator("cors_origins")
     @classmethod
     def _strip_origins(cls, v: str) -> str:
@@ -122,9 +118,6 @@ class Settings(BaseSettings):
             problems.append("JWT_SECRET is still the default — anyone can forge tokens")
         if "*" in self.cors_origin_list:
             problems.append("CORS_ORIGINS contains '*' — list your real frontend origin")
-        if self.bootstrap_admin_password == "admin12345":
-            problems.append("BOOTSTRAP_ADMIN_PASSWORD is still the default")
-
         if problems:
             raise ValueError(
                 "Refusing to start with APP_ENV=production:\n  - "

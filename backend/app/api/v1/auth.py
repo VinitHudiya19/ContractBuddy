@@ -47,7 +47,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 async def _issue_tokens(repo: UserRepository, user: User) -> TokenResponse:
-    access, _jti, expires_at = create_access_token(user_id=str(user.id), role=user.role.value)
+    access, _jti, expires_at = create_access_token(user_id=str(user.id))
     refresh = generate_refresh_token()
     await repo.store_refresh_token(
         user_id=user.id, raw_token=refresh, expires_at=refresh_token_expiry()

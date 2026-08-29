@@ -26,8 +26,6 @@ os.environ.update(
         "GROQ_API_KEY": "",  # force the extractive provider: no network calls
         "JWT_SECRET": "test-secret-not-for-production",
         "RERANK_ENABLED": "false",  # keep the suite fast and offline
-        "BOOTSTRAP_ADMIN_EMAIL": "admin@example.com",
-        "BOOTSTRAP_ADMIN_PASSWORD": "admin-test-pw",
     }
 )
 
@@ -38,11 +36,9 @@ async def initialised_app():
     from app.db.session import create_tables_if_missing
     from app.db.vector_store import init_vector_store
     from app.main import app
-    from app.services.bootstrap import ensure_admin_user
 
     await create_tables_if_missing()
     await init_vector_store()
-    await ensure_admin_user()
     return app
 
 

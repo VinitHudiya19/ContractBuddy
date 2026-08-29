@@ -48,7 +48,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # Access tokens (JWT)
 # --------------------------------------------------------------------------- #
 def create_access_token(
-    *, user_id: str, role: str, expires_minutes: int | None = None
+    *, user_id: str, expires_minutes: int | None = None
 ) -> tuple[str, str, datetime]:
     """
     Returns (token, jti, expires_at). The `jti` lets us blacklist on logout.
@@ -60,7 +60,6 @@ def create_access_token(
     jti = uuid.uuid4().hex
     payload: dict[str, Any] = {
         "sub": str(user_id),
-        "role": role,
         "type": "access",
         "jti": jti,
         "iat": int(now.timestamp()),

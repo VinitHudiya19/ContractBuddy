@@ -1,7 +1,7 @@
 """
-Startup chores: seed the admin account and warm the local models.
+Startup chores: warm the local models.
 
-Both are safe to fail — the app must still boot if either does.
+Safe to fail — the app must still boot if warmup does.
 """
 from __future__ import annotations
 
@@ -10,11 +10,7 @@ import time
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.core.security import hash_password
-from app.db.session import AsyncSessionLocal
-from app.models.enums import UserRole
 from app.providers.factory import get_embedder
-from app.repositories.user_repo import UserRepository
 
 logger = get_logger(__name__)
 
@@ -48,28 +44,4 @@ async def warm_models() -> None:
         # First question will just be slower; nothing is broken.
         logger.warning(
             "model warmup failed", extra={"error": f"{type(exc).__name__}: {exc}"}
-        )
-
-
-async def ensure_admin_user() -> None:
-    try:
-        async with AsyncSessionLocal() as session:
-            repo = UserRepository(session)
-            if await repo.get_by_email(settings.bootstrap_admin_email) is not None:
-                return
-            await repo.create(
-                email=settings.bootstrap_admin_email,
-                hashed_password=hash_password(settings.bootstrap_admin_password),
-                full_name="Administrator",
-                role=UserRole.admin,
-            )
-            await session.commit()
-        logger.info(
-            "bootstrap admin created", extra={"email": settings.bootstrap_admin_email}
-        )
-    except Exception as exc:
-        # Never block startup on this — the app is usable without it and the
-        # register endpoint still works.
-        logger.warning(
-            "bootstrap admin skipped", extra={"error": f"{type(exc).__name__}: {exc}"}
         )
