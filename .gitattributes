@@ -1,0 +1,16 @@
+# Normalise line endings so a Windows checkout still produces a working image.
+* text=auto
+
+# These are executed inside a Linux container. With CRLF endings the kernel
+# reads the shebang as "/usr/bin/env bash\r" and the container dies at start
+# with "bad interpreter" — which only reproduces for people who cloned on
+# Windows, so it is worth pinning explicitly.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+
+# Binary assets git should not try to convert.
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.ico  binary
