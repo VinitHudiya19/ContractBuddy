@@ -6,7 +6,10 @@ default HTTP status. The global handler in `middleware/error_handler.py` maps an
 `AppError` to `{"error": {"code", "message", "request_id"}}` — a single, uniform
 error shape across the whole API.
 """
-from __future__ import annotationsclass AppError(Exception):
+from __future__ import annotations
+
+
+class AppError(Exception):
     """Base class for all handled application errors."""
 
     code: str = "INTERNAL_ERROR"
@@ -108,11 +111,7 @@ class LLMProviderError(AppError):
 
 
 class LLMRateLimitError(LLMProviderError):
-    """
-    The *provider* throttled us — distinct from our own rate limiter. Worth its
-    own type because the fix is "wait", not "retry now", and free API tiers hit
-    this often enough that a generic error wastes the user's time.
-    """
+    """The LLM provider throttled us (not our own rate limiter)."""
 
     code = "LLM_RATE_LIMITED"
     status_code = 429
@@ -129,4 +128,4 @@ class ServiceUnavailableError(AppError):
     code = "SERVICE_UNAVAILABLE"
     status_code = 503
     message = "A required backend service is unavailable."
-
+

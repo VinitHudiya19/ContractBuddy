@@ -102,14 +102,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _reject_insecure_production_defaults(self) -> Settings:
-        """
-        Refuse to boot with development defaults when APP_ENV=production.
-
-        The defaults exist so a clean checkout runs with no configuration, which
-        means a forgotten env var deploys a public app with a known JWT signing
-        key. Failing at startup is the only point where that is still cheap to
-        fix; a warning in the logs would be missed.
-        """
+        """Don't let production start with the dev defaults still in place."""
         if not self.is_production:
             return self
 

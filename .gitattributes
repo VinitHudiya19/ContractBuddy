@@ -1,10 +1,9 @@
-# Normalise line endings so a Windows checkout still produces a working image.
+# Keep line endings sane so a Windows checkout still builds a working image.
 * text=auto
 
-# These are executed inside a Linux container. With CRLF endings the kernel
-# reads the shebang as "/usr/bin/env bash\r" and the container dies at start
-# with "bad interpreter" — which only reproduces for people who cloned on
-# Windows, so it is worth pinning explicitly.
+# These run inside a Linux container. With CRLF the shebang becomes
+# "/usr/bin/env bash\r" and the container fails with "bad interpreter".
+# Only happens if you cloned on Windows, so pin it here.
 *.sh            text eol=lf
 Dockerfile      text eol=lf
 *.Dockerfile    text eol=lf

@@ -5,11 +5,10 @@ set -e
 
 DB_URL="${DATABASE_URL:-}"
 
-# Postgres gets the readiness wait and the Alembic migrations. SQLite gets
-# neither: the schema history contains Postgres-only DDL (a GIN index on the
-# tsvector column), and the app builds its own tables at startup instead. That
-# split is what lets the same image run either as a single container with no
-# services attached, or against managed infrastructure.
+# Only Postgres gets the wait + migrations. The first migration creates a GIN
+# index, which is Postgres-only, so on SQLite we let the app create its own
+# tables instead. That way the same image runs with or without a database
+# server attached.
 case "$DB_URL" in
   *postgres*)
     echo "[entrypoint] waiting for Postgres..."

@@ -1,0 +1,51 @@
+# Without this, COPY backend/ . drags the local .venv into the image:
+# ~1.35 GB and 41k files, built for Windows and useless in a Linux container.
+
+# ---- Virtualenvs and caches (host-built, never valid in the image) ----
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+
+# ---- Local data (the db holds password hashes, don't ship it) ----
+**/*.db
+**/*.db.*
+**/*.sqlite
+**/*.sqlite3
+**/storage/
+**/uploads/
+**/models_cache/
+
+# ---- Secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Version control, CI and editor state ----
+.git/
+.gitignore
+.gitattributes
+.github/
+.claude/
+.idea/
+.vscode/
+**/.DS_Store
+
+# ---- Frontend tooling (UI is static files, nothing to build) ----
+**/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ---- Docs and samples, not needed at runtime ----
+*.md
+samples/
+docker-compose.yml
+Dockerfile

@@ -1,13 +1,11 @@
-# =============================================================================
-#  Contract Buddy — backend image (FastAPI + local embeddings + RAG pipeline)
+# Contract Buddy backend image.
 #
-#  sentence-transformers pulls CPU torch, so the image is large (~2 GB) by
-#  nature. Model weights are downloaded on first run into /app/.cache, which is
-#  a volume in compose so the download happens once.
+# The image is large (~2 GB) because sentence-transformers needs CPU torch.
+# Model weights download on first run into /app/.cache, kept as a volume in
+# compose so it only happens once.
 #
-#  Build from the repo root, not backend/:
-#      docker build -f backend/Dockerfile -t contractbuddy .
-# =============================================================================
+# Build from the repo root, not from backend/:
+#     docker build -f backend/Dockerfile -t contractbuddy .
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -16,8 +14,8 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     HF_HOME=/app/.cache/huggingface
 
-# libgomp1 is required by torch at runtime; build-essential covers any package
-# that has no prebuilt wheel for this platform.
+# torch needs libgomp1 at runtime. build-essential is for any package
+# without a prebuilt wheel.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libgomp1 \
@@ -36,8 +34,8 @@ COPY frontend/ ./frontend/
 COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Run as a non-root user. The model cache and upload dir live under /app so the
-# same user that runs the app can write to them without a root-owned volume.
+# Run as a non-root user. Cache and uploads sit under /app so this user
+# can write to them.
 RUN useradd -m appuser \
     && mkdir -p /app/storage /app/.cache \
     && chown -R appuser:appuser /app
@@ -45,6 +43,6 @@ USER appuser
 
 EXPOSE 8000
 
-# Entrypoint applies migrations and seeds the admin, then execs the command.
+# Entrypoint sets up the database, then runs the command below.
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

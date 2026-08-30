@@ -86,9 +86,7 @@ def build_messages(
     return messages
 
 
-# Models do not all honour the ASCII brackets the prompt asks for — some emit
-# the fullwidth CJK pair instead. Accepting both keeps citation filtering
-# working across providers rather than silently falling back to "show all".
+# Some models cite with fullwidth brackets 【S1】 instead of [S1], so match both.
 _MARKER_RE = re.compile(r"[\[【]\s*S(\d+)\s*[\]】]")
 
 

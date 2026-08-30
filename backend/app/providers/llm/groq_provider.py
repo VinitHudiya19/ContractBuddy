@@ -1,9 +1,9 @@
 """
-Groq LLM wrapper. Calls the Groq API asynchronously via the official SDK.
+Groq LLM wrapper, using the official async SDK.
 
-The model is read from GROQ_MODEL rather than pinned here: Groq retires hosted
-models with little notice (llama-3.3-70b-versatile disappeared this way), and a
-config value can be changed without a redeploy.
+The model name comes from GROQ_MODEL, not from code. Groq drops hosted models
+without much warning (llama-3.3-70b-versatile is gone), so it needs to be
+changeable without a redeploy.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.providers.llm.base import LLMMessage, LLMProvider, LLMResult
 
 
 def _wrap(exc: Exception, action: str) -> LLMProviderError:
-    """Turn an SDK error into ours, keeping rate limits distinguishable."""
+    """Convert an SDK error to ours, keeping rate limits separate."""
     if getattr(exc, "status_code", None) == 429 or "rate limit" in str(exc).lower():
         return LLMRateLimitError()
     return LLMProviderError(f"Groq {action} failed: {exc}")
@@ -24,8 +24,8 @@ def _wrap(exc: Exception, action: str) -> LLMProviderError:
 class GroqProvider(LLMProvider):
     name = "groq"
 
-    # Published rates for openai/gpt-oss-20b at time of writing. Only used for
-    # the usage figures shown in the UI, so drift here is cosmetic.
+    # Published rates for openai/gpt-oss-20b. Only used for the cost shown
+    # in the UI, so it does not need to be exact.
     input_cost_per_million = 0.10
     output_cost_per_million = 0.50
 

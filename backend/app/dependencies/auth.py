@@ -4,8 +4,8 @@ Auth dependencies.
 `get_current_user` validates the bearer access token, checks the Redis logout
 blacklist (by `jti`), loads the user, and confirms the account is active.
 
-Every account is equal: authorisation is ownership, enforced in the repository
-layer by scoping each query to `user_id`.
+There are no roles. Every account is the same, and access is decided by
+ownership: the repositories scope every query to `user_id`.
 """
 from __future__ import annotations
 

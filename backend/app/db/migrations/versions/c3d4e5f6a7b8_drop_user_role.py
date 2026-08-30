@@ -1,8 +1,7 @@
 """Drop the user role column and its enum type.
 
-Every account now owns its own documents and nothing else — authorisation is
-ownership, checked in the repository layer, so there is no privilege level left
-for this column to express.
+There is no admin any more. Every account only touches its own documents, and
+the repositories already check that, so the column has nothing left to say.
 
 Revision ID: c3d4e5f6a7b8
 Revises: b2c3d4e5f6a7
@@ -19,12 +18,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # batch_alter_table so this also works on SQLite, which cannot DROP COLUMN
-    # in place and needs the table rebuilt.
+    # batch_alter_table rebuilds the table, which SQLite needs since it
+    # cannot DROP COLUMN directly.
     with op.batch_alter_table("users") as batch:
         batch.drop_column("role")
 
-    # Postgres keeps the enum type after the last column using it is dropped.
+    # Postgres keeps the enum type around after the column is gone.
     sa.Enum(name="user_role").drop(op.get_bind(), checkfirst=True)
 
 

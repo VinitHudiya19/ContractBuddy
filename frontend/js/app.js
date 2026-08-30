@@ -79,13 +79,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         out = out.replace(/`(.+?)`/g, '<code>$1</code>');
         out = out.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
         out = out.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
-        // Some models emit the fullwidth bracket pair instead of the ASCII one
-        // the prompt asks for; both are normalised to a single chip style here.
+        // Match both [S1] and 【S1】 — models use either.
         out = out.replace(/[[【]\s*S(\d+)\s*[\]】]/g, '<span class="citation-ref">[S$1]</span>');
         out = out.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
-        // The line-break pass above also hits the newlines *between* list
-        // items, leaving stray <br> inside the <ul>. Strip those: <ul> spacing
-        // is the list's job, and <br> is not valid there anyway.
+        // The line-break pass above also puts <br> between list items, which
+        // is invalid inside a <ul>. Strip those out.
         return out
             .replace(/(<\/li>)\s*(?:<br>\s*)+/g, '$1')
             .replace(/(<ul>)\s*(?:<br>\s*)+/g, '$1')
