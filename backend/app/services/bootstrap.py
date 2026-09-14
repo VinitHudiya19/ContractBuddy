@@ -1,7 +1,7 @@
 """
 Startup chores: warm the local models.
 
-Safe to fail — the app must still boot if warmup does.
+Safe to fail: the app still boots if warmup does not finish.
 """
 from __future__ import annotations
 

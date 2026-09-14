@@ -3,7 +3,7 @@ Contract endpoints.
 
 Upload a contract, get structured analysis back (parties, obligations, missing
 clauses, risk/health scores), list them, and re-run the analysis on demand.
-Every query is scoped to the calling user — a contract id from another account
+Every query is scoped to the calling user. A contract id from another account
 returns 404, not someone else's data.
 """
 from __future__ import annotations
@@ -205,7 +205,7 @@ async def reanalyze_contract(
     user: User = Depends(get_current_user),
 ) -> ContractResponse:
     """
-    Re-run analysis against the stored file — useful after adding an API key,
+    Re-run analysis against the stored file. Useful after adding an API key,
     since the first pass may have used the rule-based fallback.
     """
     contract = await _get_owned(db, contract_id, user)

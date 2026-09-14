@@ -1,11 +1,10 @@
 """
-Extractive fallback used when no LLM API key is configured.
+Used when there is no LLM API key.
 
-It does **not** pretend to be a language model. It selects the sentences from
-the retrieved context that overlap most with the question and returns them
-verbatim with their citation markers, prefixed by a notice explaining that
-generation is disabled. That keeps the retrieval half of the pipeline
-demonstrable offline while never presenting invented text as a model answer.
+This does not generate anything. It picks the sentences from the retrieved
+chunks that overlap most with the question, returns them word for word with
+their citation markers, and says up front that generation is off. So retrieval
+still works offline, and nothing invented is ever shown as a model answer.
 """
 from __future__ import annotations
 

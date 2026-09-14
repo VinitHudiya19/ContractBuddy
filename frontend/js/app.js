@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         out = out.replace(/`(.+?)`/g, '<code>$1</code>');
         out = out.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
         out = out.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
-        // Match both [S1] and 【S1】 — models use either.
+        // Match both [S1] and 【S1】, models use either.
         out = out.replace(/[[【]\s*S(\d+)\s*[\]】]/g, '<span class="citation-ref">[S$1]</span>');
         out = out.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
         // The line-break pass above also puts <br> between list items, which
@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function summarizeDocument(docId) {
         if (!activeConvoId) {
-            toast('Open a chat first — the summary is posted into it.', 'info');
+            toast('Open a chat first, the summary gets posted into it.', 'info');
             return;
         }
 
@@ -684,7 +684,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         Array.from(files).forEach(function (file) {
             var ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
             if (ext !== '.pdf' && ext !== '.docx') {
-                toast(ext + ' files are not supported — use PDF or DOCX.', 'error');
+                toast(ext + ' files are not supported. Use PDF or DOCX.', 'error');
                 return;
             }
             uploadOne(file);
@@ -748,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         xhr.addEventListener('error', function () {
             bar.classList.add('failed');
             percent.textContent = 'Network error';
-            toast('Upload failed — is the backend running?', 'error');
+            toast('Upload failed. Is the backend running?', 'error');
         });
 
         var form = new FormData();
@@ -853,7 +853,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         var sourceNote = c.analysis_source === 'llm'
             ? '<span class="source-badge llm" title="Extracted by the language model">' +
               'LLM analysis</span>'
-            : '<span class="source-badge rules" title="No LLM configured — derived from ' +
+            : '<span class="source-badge rules" title="No LLM configured, derived from ' +
               'keyword rules over the contract text">Rule-based analysis</span>';
 
         var value = c.value === null || c.value === undefined

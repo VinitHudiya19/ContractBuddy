@@ -1,13 +1,13 @@
 """
-Qdrant vector store access.
+Qdrant access.
 
-Single collection (`document_chunks`), multi-tenant isolation via **payload
-filtering** — every search is filtered by `user_id` (and optionally a set of
-`document_id`s for conversation scoping) *before* similarity search, so a user
-can never retrieve another user's vectors (§9).
+One collection (`document_chunks`). Every search carries a `user_id` payload
+filter, plus the document ids when a conversation is scoped to specific files.
+The filter is part of the search request, so Qdrant never scores another user's
+vectors in the first place.
 
-The client is created lazily and reused. Collection creation is idempotent and
-uses the active embedding provider's dimensionality from settings.
+The client is created on first use and reused. Creating the collection is safe
+to call every startup.
 """
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ async def ensure_collection() -> None:
                 field_name=field,
                 field_schema=models.PayloadSchemaType.KEYWORD,
             )
-        except Exception as exc:  # noqa: BLE001 — index may already exist
+        except Exception as exc:  # noqa: BLE001 (index may already exist)
             logger.debug("payload index create skipped", extra={"field": field, "error": str(exc)})
     logger.info("qdrant collection ready", extra={"collection": settings.qdrant_collection})
 

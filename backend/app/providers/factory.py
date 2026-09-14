@@ -1,7 +1,7 @@
 """
 Provider wiring.
 
-Business logic never imports a concrete provider — it asks for `get_llm()` /
+Business logic never imports a concrete provider. It asks for `get_llm()` or
 `get_embedder()` and gets whatever `LLM_PROVIDER` / `EMBEDDING_PROVIDER` in the
 environment selected. Instances are cached because loading a local model is
 expensive and must not happen per request.
@@ -26,7 +26,7 @@ def get_llm() -> LLMProvider:
     """
     Active LLM. Falls back to the extractive provider when no key is configured,
     so the app stays usable out of the box instead of failing on the first
-    question — and says so in its answers rather than faking generation.
+    question, and it says so in the answer instead of faking generation.
     """
     if settings.groq_api_key:
         try:
@@ -37,10 +37,7 @@ def get_llm() -> LLMProvider:
                 extra={"error": f"{type(exc).__name__}: {exc}"},
             )
     else:
-        logger.warning(
-            "no LLM API key configured, using extractive fallback",
-            extra={"provider": settings.llm_provider},
-        )
+        logger.warning("no GROQ_API_KEY set, answers will be extractive")
     return ExtractiveProvider()
 
 

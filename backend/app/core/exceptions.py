@@ -1,10 +1,10 @@
 """
 Domain exceptions.
 
-Each carries a stable machine `code` (surfaced in the JSON error envelope) and a
-default HTTP status. The global handler in `middleware/error_handler.py` maps any
-`AppError` to `{"error": {"code", "message", "request_id"}}` — a single, uniform
-error shape across the whole API.
+Each one carries a `code` that goes out in the JSON response, plus a default
+HTTP status. The handler in `middleware/error_handler.py` turns any `AppError`
+into `{"error": {"code", "message", "request_id"}}`, so every endpoint fails in
+the same shape.
 """
 from __future__ import annotations
 

@@ -1,3 +1,3 @@
-"""Contract Buddy — backend application package."""
+"""Contract Buddy backend."""
 
 __version__ = "1.0.0"

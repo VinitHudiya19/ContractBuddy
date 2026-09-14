@@ -1,5 +1,5 @@
 """
-Document summarization (§10.4) — chunk map-reduce.
+Document summarization using map-reduce over the chunks.
 
 Map: chunks are grouped into context-window-sized batches; each batch is
 summarized independently. Reduce: the partial summaries are summarized into one

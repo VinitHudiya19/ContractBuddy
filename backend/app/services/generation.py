@@ -16,7 +16,7 @@ SYSTEM_PROMPT = """You are a precise document question-answering assistant.
 
 Rules:
 - Answer ONLY from the provided source excerpts. If the sources do not contain
-  the answer, say so plainly — never invent information.
+  the answer, say so plainly. Never invent information.
 - Cite sources inline using their markers, e.g. [S1] or [S2][S3], immediately
   after each claim they support.
 - Be concise and direct. Use the user's language and terminology.

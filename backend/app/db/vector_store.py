@@ -1,17 +1,15 @@
 """
-Pluggable vector store.
+Two vector stores behind one interface, so retrieval and ingestion don't care
+which is running.
 
-Two backends implement the same small interface, so nothing in the retrieval or
-ingestion code knows which one is active:
+QdrantVectorStore is the real one: a proper ANN index, with the user_id filter
+applied inside the search request.
 
-* ``QdrantVectorStore`` — the production path. Real ANN index, multi-tenant
-  isolation enforced by payload filters applied *before* the similarity search.
-* ``SqlVectorStore``    — the zero-setup path. Vectors live in a table next to
-  the chunks and similarity is a brute-force dot product in NumPy. O(n) per
-  query, which is fine for a demo corpus and keeps `git clone && run` working
-  with no Docker, but it is the reason Qdrant exists for real workloads.
+SqlVectorStore keeps vectors in a table next to the chunks and compares them
+with a NumPy dot product. That is O(n) per query, so it does not scale, but it
+means you can clone the repo and run it without Docker or a vector database.
 
-``VECTOR_STORE=auto`` (the default) probes Qdrant once at startup and falls back
+VECTOR_STORE=auto (the default) checks Qdrant once at startup and falls back
 to the SQL store when it is not reachable.
 """
 from __future__ import annotations
@@ -131,7 +129,7 @@ class SqlVectorStore(VectorStore):
 
     Note: writes use their own session (the interface is shared with Qdrant,
     which has no notion of one). Callers must therefore not hold an uncommitted
-    write transaction while calling in — on SQLite that deadlocks against
+    write transaction while calling in. On SQLite that deadlocks against
     itself. Commit first, or call before starting the write.
     """
 
@@ -139,7 +137,7 @@ class SqlVectorStore(VectorStore):
 
     async def ensure_ready(self) -> None:
         from app.db.session import Base, engine
-        from app.models.document import ChunkVector  # noqa: F401 — registers the table
+        from app.models.document import ChunkVector  # noqa: F401 (registers the table)
 
         async with engine.begin() as conn:
             await conn.run_sync(
@@ -184,7 +182,7 @@ class SqlVectorStore(VectorStore):
         from app.models.document import ChunkVector
 
         async with AsyncSessionLocal() as session:
-            # Tenant filter first — a user can only ever score their own rows.
+            # Filter by user first, so only their own rows ever get scored.
             stmt = select(ChunkVector).where(ChunkVector.user_id == user_id)
             if document_ids:
                 stmt = stmt.where(ChunkVector.document_id.in_(document_ids))
@@ -202,7 +200,7 @@ class SqlVectorStore(VectorStore):
         matrix = matrix.reshape(len(rows), -1)
         if matrix.shape[1] != query.shape[0]:
             logger.error(
-                "embedding dimension mismatch — reindex after changing models",
+                "embedding dimension mismatch, reindex after changing models",
                 extra={"stored_dim": int(matrix.shape[1]), "query_dim": int(query.shape[0])},
             )
             return []

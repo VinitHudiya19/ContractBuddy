@@ -4,7 +4,7 @@ Structured JSON logging.
 Every log line is a single JSON object so it can be shipped to any log
 aggregator as-is. A `request_id` contextvar is bound per-request by the
 telemetry middleware and automatically included on every line emitted while
-handling that request — this is the correlation ID surfaced in error responses.
+handling that request. It is the id that shows up in error responses.
 """
 from __future__ import annotations
 

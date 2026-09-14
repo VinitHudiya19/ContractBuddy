@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.db.redis_client import get_redis
 from app.db.session import get_db
 from app.db.vector_store import get_vector_store
+from app.providers.factory import get_embedder, get_llm
 
 router = APIRouter(tags=["health"])
 
@@ -48,8 +49,10 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
             # Rate limiting and cached document status degrade gracefully.
             "redis": {"ok": redis_ok, "required": False},
         },
+        # The active provider, not the configured one: without an API key the
+        # factory hands back the extractive provider instead of Groq.
         "providers": {
-            "llm": settings.llm_provider,
-            "embeddings": settings.embedding_provider,
+            "llm": get_llm().name,
+            "embeddings": get_embedder().name,
         },
     }

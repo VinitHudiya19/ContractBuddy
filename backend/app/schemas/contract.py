@@ -2,7 +2,7 @@
 Contract request/response schemas.
 
 The list-valued analysis fields are stored as JSON text (so the same schema
-works on SQLite and Postgres) but are exposed to the API as real arrays — the
+works on SQLite and Postgres) but are exposed to the API as real arrays, so the
 frontend should never have to `JSON.parse` a field out of a JSON response.
 """
 from __future__ import annotations

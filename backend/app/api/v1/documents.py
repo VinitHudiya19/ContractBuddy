@@ -122,7 +122,7 @@ async def get_document_status(
                 error_reason=document.error_reason,
             )
     except Exception:
-        pass  # Redis is optional — the database row is the source of truth.
+        pass  # Redis is optional; the database row is the source of truth.
 
     return DocumentStatusResponse(
         id=document_id,
@@ -145,7 +145,7 @@ async def delete_document(
     # Drop the vectors first. The vector store runs on its own connection, so
     # calling it while this request holds an uncommitted write would deadlock
     # against itself on SQLite. Orphaned vectors (if this crashes midway) are
-    # harmless — retrieval only surfaces chunks whose document row still exists.
+    # harmless, since retrieval only returns chunks whose document row exists.
     await get_vector_store().delete_by_document(document_id)
 
     await repo.delete(document)

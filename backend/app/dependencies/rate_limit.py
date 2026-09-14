@@ -44,7 +44,7 @@ class RateLimiter:
             _, _, count, _ = await pipe.execute()
         except Exception as exc:
             # Redis is optional infrastructure. Fail *open* so a missing cache
-            # never blocks legitimate traffic, but say so — silently dropping
+            # never blocks legitimate traffic, but log it. Silently dropping
             # rate limiting is exactly the kind of thing that goes unnoticed.
             logger.warning(
                 "rate limiting disabled for this request (redis unavailable)",

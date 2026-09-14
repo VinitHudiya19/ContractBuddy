@@ -53,3 +53,5 @@ Thumbs.db
 *.sqlite3
 
 INTERVIEW_PREP_GUIDE.md/
+# Personal notes, not part of the project
+INTERVIEW_PREP_GUIDE.md

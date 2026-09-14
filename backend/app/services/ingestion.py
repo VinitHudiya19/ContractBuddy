@@ -1,14 +1,12 @@
 """
-Document ingestion pipeline (§10.1).
+Document ingestion. Runs in a background task after the upload responds.
 
-Runs as a FastAPI BackgroundTask after upload returns 202:
-    parse → clean/chunk → persist chunk rows (Postgres, content_tsv populates
-    itself via the generated column) → embed → upsert vectors (Qdrant).
+parse -> chunk -> save chunk rows -> embed -> store vectors
 
-Status transitions: processing → ready | failed(error_reason). Live status is
-mirrored to Redis (`doc_status:{id}`) so the frontend can poll cheaply without
-hitting Postgres. Each stage is resilient: any failure marks the document
-`failed` with a reason instead of leaving it stuck in `processing`.
+The document status goes processing -> ready, or failed with a reason. It is
+also written to Redis so the frontend can poll status without hitting the
+database every time. If any stage throws, the document is marked failed instead
+of being left stuck on processing forever.
 """
 from __future__ import annotations
 
@@ -36,7 +34,7 @@ async def set_live_status(document_id: UUID, status: str) -> None:
     """Mirror processing status into Redis for cheap polling (1h TTL)."""
     try:
         await get_redis().setex(f"doc_status:{document_id}", 3600, status)
-    except Exception as exc:  # noqa: BLE001 — status mirror is best-effort
+    except Exception as exc:  # noqa: BLE001 (status cache is best-effort)
         logger.warning("doc status mirror failed", extra={"error": str(exc)})
 
 
@@ -65,7 +63,7 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
                 raise ValueError("Document produced no usable chunks.")
 
             # 3. Persist chunk rows. content_tsv (the lexical leg) is a
-            #    generated column on Postgres — it populates itself from
+            #    generated column on Postgres, so it populates itself from
             #    `content`. Commit immediately: embedding below is slow network
             #    /CPU work, and holding a write transaction open across it locks
             #    the database for every concurrent request (SQLite especially).
@@ -129,7 +127,7 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
                 extra={"document_id": str(document_id), "chunks": len(chunk_rows)},
             )
 
-        except Exception as exc:  # noqa: BLE001 — any failure = failed status
+        except Exception as exc:  # noqa: BLE001 (any failure means failed status)
             await session.rollback()
             # Re-fetch on the fresh transaction so the status update sticks.
             document = await session.get(Document, document_id)
@@ -145,7 +143,7 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
             )
         finally:
             # The original upload is not retained: chunks + vectors are the
-            # system of record (privacy: no raw files at rest — §14).
+            # The chunks are the system of record, so the raw file is not kept.
             try:
                 Path(file_path).unlink(missing_ok=True)
             except OSError:

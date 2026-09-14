@@ -2,7 +2,7 @@
 Auth endpoints: register, login, refresh (with rotation), logout (blacklist).
 
 Refresh-token rotation: every successful /refresh revokes the presented token
-and issues a brand-new one. A replayed (already-rotated) token is rejected —
+and issues a brand-new one. A replayed (already rotated) token is rejected:
 basic reuse detection. Logout blacklists the access token's `jti` in Redis until
 its natural expiry and revokes the user's refresh tokens.
 """

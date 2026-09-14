@@ -1,9 +1,8 @@
 """
 Application configuration.
 
-All settings are environment-driven (pydantic-settings). Nothing about which
-LLM/embedding provider is active is hardcoded in business logic — it is read
-from here, so a single `.env` change swaps providers. See `.env.example`.
+Everything comes from the environment (pydantic-settings), with defaults that
+let the app run on a clean checkout. See `.env.example`.
 """
 from __future__ import annotations
 
@@ -23,8 +22,6 @@ _REPO_ROOT = _BACKEND_DIR.parent
 # single source of truth; `backend/.env` is only a legacy fallback.
 _ENV_FILES = (_BACKEND_DIR / ".env", _REPO_ROOT / ".env")
 
-EmbeddingProviderName = Literal["local", "openai", "gemini"]
-LLMProviderName = Literal["groq", "gemini", "openai", "anthropic", "ollama"]
 VectorStoreName = Literal["auto", "qdrant", "sql"]
 
 
@@ -62,26 +59,13 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 20
     upload_dir: str = "storage"
 
-    # ---- Providers ----
-    embedding_provider: EmbeddingProviderName = "local"
-    llm_provider: LLMProviderName = "groq"
-    llm_fallback_provider: str = ""  # empty = no fallback
-
+    # ---- Models ----
     local_embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dim: int = 384
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
-    openai_embed_model: str = "text-embedding-3-small"
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-haiku-4-5-20251001"
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3"
 
     # ---- Retrieval tuning ----
     chunk_tokens: int = 500
@@ -108,9 +92,9 @@ class Settings(BaseSettings):
 
         problems = []
         if self.jwt_secret == "change-me":
-            problems.append("JWT_SECRET is still the default — anyone can forge tokens")
+            problems.append("JWT_SECRET is still the default, so anyone can forge tokens")
         if "*" in self.cors_origin_list:
-            problems.append("CORS_ORIGINS contains '*' — list your real frontend origin")
+            problems.append("CORS_ORIGINS contains '*'; list your real frontend origin")
         if problems:
             raise ValueError(
                 "Refusing to start with APP_ENV=production:\n  - "

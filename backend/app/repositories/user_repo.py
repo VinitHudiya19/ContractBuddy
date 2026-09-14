@@ -2,7 +2,7 @@
 User + refresh-token data access.
 
 Repositories isolate DB access from business logic (services/routers) so the
-query surface is small, testable, and swappable. Nothing here commits — the
+query surface is small and testable. Nothing here commits; the
 caller owns the transaction boundary.
 """
 from __future__ import annotations

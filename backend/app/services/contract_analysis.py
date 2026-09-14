@@ -1,15 +1,14 @@
 """
-Structured contract analysis.
+Pulls structured fields out of a contract.
 
-Sends the contract text to the LLM and asks for a strict JSON object, then
-validates and coerces every field before it reaches the database — an LLM will
-occasionally return a string where a number belongs, wrap JSON in a code fence,
-or omit a key entirely, and none of that should reach the API layer.
+Asks the LLM for a JSON object, then checks and converts every field before it
+goes near the database. Models do return a string where a number should be, or
+wrap the JSON in a code fence, or skip a key, so none of it can be trusted
+as-is.
 
-If no LLM is available (or the response cannot be salvaged) the analysis falls
-back to deterministic rules over the actual contract text. The fallback is
-labelled via `analysis_source` so the UI never presents heuristics as model
-output.
+With no LLM (or if the JSON is unusable) it falls back to regex and keyword
+rules over the text. Either way the result carries `analysis_source`, so the UI
+can show which one produced it.
 """
 from __future__ import annotations
 
@@ -285,7 +284,7 @@ def _first(text: str, pattern: str, flags: int = re.IGNORECASE) -> str | None:
 
 
 def _money(text: str) -> float | None:
-    """Largest currency amount in the document — usually the contract value."""
+    """Largest currency amount in the document, usually the contract value."""
     amounts = []
     for raw in re.findall(r"(?:USD|\$)\s*([\d,]+(?:\.\d{1,2})?)", text, flags=re.IGNORECASE):
         try:

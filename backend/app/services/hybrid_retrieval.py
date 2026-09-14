@@ -1,13 +1,12 @@
 """
-Hybrid retrieval: dense vector search (Qdrant) + lexical keyword search (SQL).
+Hybrid retrieval: vector search plus keyword search.
 
-Both legs run concurrently, their ranked lists are merged with Reciprocal Rank
-Fusion (RRF), and the fused candidates are re-scored by a local cross-encoder.
+Both run at the same time, the two ranked lists are merged with Reciprocal Rank
+Fusion, and a cross-encoder reranks what comes out.
 
-The lexical leg is dialect-aware: PostgreSQL uses a real `tsvector` GIN index,
-SQLite (the zero-setup local mode) uses per-term LIKE matching scored by how
-many query terms a chunk contains. Both return a ranked list of chunk ids, so
-everything downstream is identical.
+The keyword side depends on the database. Postgres uses a tsvector GIN index;
+SQLite counts how many query terms each chunk contains. Both return a ranked
+list of chunk ids, so nothing after this point has to care which one ran.
 """
 from __future__ import annotations
 
@@ -127,7 +126,7 @@ async def _vector_leg(
     query: str, user_id: UUID, document_ids: list[UUID]
 ) -> tuple[list[str], float]:
     """
-    Dense semantic leg. Qdrant is optional infrastructure — if it is unreachable
+    Vector search leg. Qdrant is optional, so if it is unreachable
     the request degrades to keyword-only rather than failing, but the failure is
     logged loudly so it is never silently mistaken for "no results".
     """
@@ -166,7 +165,7 @@ def _query_terms(query: str) -> list[str]:
 async def _keyword_leg(
     session: AsyncSession, query: str, user_id: UUID, document_ids: list[UUID]
 ) -> tuple[list[str], float]:
-    """Lexical leg — Postgres full-text search, or per-term matching on SQLite."""
+    """Keyword leg: Postgres full-text search, or per-term matching on SQLite."""
     t = time.perf_counter()
     dialect = session.bind.dialect.name if session.bind is not None else ""
     try:
@@ -295,7 +294,8 @@ async def _rerank(query: str, chunks: list[RetrievedChunk], top_k: int) -> list[
     """
     Cross-encoder reranking. A bi-encoder embeds query and chunk separately; a
     cross-encoder reads the pair together with full attention, which is far more
-    accurate but too slow for the whole corpus — hence rerank-after-retrieve.
+    accurate but far too slow to run over every chunk, so it runs last on a
+    short list.
     """
     global _reranker
     if not settings.rerank_enabled or not chunks:

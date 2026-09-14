@@ -20,6 +20,7 @@ from app.db.redis_client import close_redis
 from app.db.session import create_tables_if_missing
 from app.db.vector_store import close_vector_store, init_vector_store
 from app.middleware.error_handler import register_exception_handlers
+from app.providers.factory import get_llm
 from app.services.bootstrap import warm_models
 
 configure_logging(settings.log_level)
@@ -33,8 +34,7 @@ async def lifespan(app: FastAPI):
         extra={
             "env": settings.app_env,
             "database": "sqlite" if settings.is_sqlite else "postgresql",
-            "llm_provider": settings.llm_provider,
-            "embedding_provider": settings.embedding_provider,
+            "llm": get_llm().name,
         },
     )
 

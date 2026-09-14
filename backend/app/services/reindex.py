@@ -1,9 +1,9 @@
 """
-Re-embed a document's existing chunks (POST /api/reindex — §11).
+Re-embed a document's existing chunks, used by POST /api/reindex.
 
 Used after switching embedding providers: chunk text in Postgres is the system
 of record, so we delete the document's Qdrant points and re-embed/upsert from
-the stored chunks — no re-upload or re-parse needed. Runs as a background task
+the stored chunks, with no re-upload or re-parse. Runs as a background task
 with the same status mirroring as initial ingestion.
 """
 from __future__ import annotations

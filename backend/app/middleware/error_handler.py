@@ -1,11 +1,11 @@
 """
-Global exception handlers → one uniform JSON error envelope:
+Exception handlers, so every error leaves the API in the same shape:
 
     {"error": {"code": "...", "message": "...", "request_id": "..."}}
 
-`AppError`s map to their declared code/status. FastAPI request-validation errors
-become a 422 with field details. Anything unhandled becomes a safe 500 (no
-internals leaked) but is logged with a full stack trace and the request_id.
+AppError subclasses use their own code and status. Validation errors become a
+422 with the field details. Anything else becomes a plain 500 with no internals
+in the response, but the full traceback and request id go to the log.
 """
 from __future__ import annotations
 

@@ -1,11 +1,12 @@
 """
-Security primitives: password hashing (bcrypt) and JWT issue/verify.
+Password hashing (bcrypt) and JWT creation/verification.
 
-Design notes tied to the spec (§12):
-- Access tokens are short-lived (default 15 min) and carry a unique `jti` so a
-  logout can blacklist that specific token in Redis until natural expiry.
-- Refresh tokens are opaque high-entropy strings. We store only a SHA-256 hash
-  of them in Postgres and rotate on every use — the raw token is never persisted.
+Access tokens last 15 minutes and carry a random `jti`. Logout puts that `jti`
+in Redis until the token would have expired anyway, which is how logout works
+on an otherwise stateless token.
+
+Refresh tokens are just random strings. Only their SHA-256 hash is stored, and
+each one is replaced on use, so a stolen refresh token works at most once.
 """
 from __future__ import annotations
 
@@ -94,7 +95,7 @@ def generate_refresh_token() -> str:
 
 
 def hash_refresh_token(raw: str) -> str:
-    """Deterministic hash for storage/lookup — never store the raw token."""
+    """Hash used for storage and lookup. The raw token is never stored."""
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
