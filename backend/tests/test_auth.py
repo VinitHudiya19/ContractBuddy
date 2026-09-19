@@ -84,9 +84,35 @@ class TestTokenHandling:
         assert first.status_code == 200
         assert first.json()["refresh_token"] != original
 
-        # Replaying a rotated token must fail — that is the reuse detection.
+        # Replaying a rotated token must fail. That is the reuse detection.
         replay = await client.post("/api/auth/refresh", json={"refresh_token": original})
         assert replay.status_code == 401
+
+    async def test_logout_works_without_redis(self, client):
+        """
+        The suite points at an unreachable Redis on purpose. Logout used to 500
+        here, and the refresh-token revocation after the Redis call never ran,
+        so logging out left usable refresh tokens behind.
+        """
+        email = "logout-no-redis@example.com"
+        await client.post(
+            "/api/auth/register",
+            json={"email": email, "password": "Password123", "full_name": "Logout"},
+        )
+        login = await client.post(
+            "/api/auth/login", json={"email": email, "password": "Password123"}
+        )
+        access = login.json()["access_token"]
+        refresh = login.json()["refresh_token"]
+
+        logout = await client.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {access}"}
+        )
+        assert logout.status_code == 204
+
+        # The refresh token must be dead even though the blacklist write failed.
+        reused = await client.post("/api/auth/refresh", json={"refresh_token": refresh})
+        assert reused.status_code == 401
 
 
 class TestTenantIsolation:

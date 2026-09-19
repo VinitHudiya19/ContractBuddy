@@ -30,9 +30,7 @@ pwd_context = CryptContext(
 )
 
 
-# --------------------------------------------------------------------------- #
-# Passwords
-# --------------------------------------------------------------------------- #
+# ---- Passwords ----
 def hash_password(plain: str) -> str:
     # bcrypt only considers the first 72 bytes; guard longer inputs explicitly.
     return pwd_context.hash(plain[:72])
@@ -45,9 +43,7 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-# --------------------------------------------------------------------------- #
-# Access tokens (JWT)
-# --------------------------------------------------------------------------- #
+# ---- Access tokens (JWT) ----
 def create_access_token(
     *, user_id: str, expires_minutes: int | None = None
 ) -> tuple[str, str, datetime]:
@@ -86,9 +82,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
     return payload
 
 
-# --------------------------------------------------------------------------- #
-# Refresh tokens (opaque, hashed at rest)
-# --------------------------------------------------------------------------- #
+# ---- Refresh tokens (opaque, hashed at rest) ----
 def generate_refresh_token() -> str:
     """A high-entropy opaque token. The raw value is returned to the client once."""
     return secrets.token_urlsafe(48)

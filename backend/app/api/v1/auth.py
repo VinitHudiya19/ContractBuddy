@@ -1,10 +1,11 @@
 """
 Auth endpoints: register, login, refresh (with rotation), logout (blacklist).
 
-Refresh-token rotation: every successful /refresh revokes the presented token
-and issues a brand-new one. A replayed (already rotated) token is rejected:
-basic reuse detection. Logout blacklists the access token's `jti` in Redis until
-its natural expiry and revokes the user's refresh tokens.
+Every successful /refresh revokes the token that was presented and issues a new
+one, so replaying an old refresh token is rejected.
+
+Logout revokes the user's refresh tokens and, if Redis is up, blacklists the
+access token's `jti` until it would have expired anyway.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from app.core.exceptions import (
     InvalidTokenError,
     UserAlreadyExistsError,
 )
+from app.core.logging import get_logger
 from app.core.security import (
     create_access_token,
     decode_access_token,
@@ -43,6 +45,7 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = get_logger(__name__)
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -111,16 +114,24 @@ async def logout(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    # Blacklist this access token's jti until it would expire anyway.
-    if credentials and credentials.credentials:
-        payload = decode_access_token(credentials.credentials)
-        jti = payload.get("jti")
-        exp = payload.get("exp", 0)
-        ttl = max(1, int(exp - time.time()))
-        if jti:
-            await get_redis().setex(f"token_blacklist:{jti}", ttl, "1")
-
-    # Revoke refresh tokens so they can't mint new access tokens.
+    # Revoke the refresh tokens first. This is the part that has to happen:
+    # without it, logout leaves tokens that can still mint new access tokens.
     repo = UserRepository(db)
     await repo.revoke_all_for_user(user.id)
     await db.commit()
+
+    # Then blacklist this access token's jti until it would expire anyway.
+    # Best-effort: with no Redis the access token stays valid for its last few
+    # minutes, which is why the refresh revocation above comes first.
+    if credentials and credentials.credentials:
+        payload = decode_access_token(credentials.credentials)
+        jti = payload.get("jti")
+        ttl = max(1, int(payload.get("exp", 0) - time.time()))
+        if jti:
+            try:
+                await get_redis().setex(f"token_blacklist:{jti}", ttl, "1")
+            except Exception as exc:  # noqa: BLE001 (Redis is optional)
+                logger.warning(
+                    "could not blacklist token on logout",
+                    extra={"error": f"{type(exc).__name__}: {exc}"},
+                )
