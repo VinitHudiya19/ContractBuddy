@@ -142,7 +142,6 @@ async def ingest_document(document_id: UUID, file_path: str) -> None:
                 exc_info=exc,
             )
         finally:
-            # The original upload is not retained: chunks + vectors are the
             # The chunks are the system of record, so the raw file is not kept.
             try:
                 Path(file_path).unlink(missing_ok=True)
