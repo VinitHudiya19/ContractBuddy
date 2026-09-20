@@ -6,7 +6,8 @@ parse -> chunk -> save chunk rows -> embed -> store vectors
 The document status goes processing -> ready, or failed with a reason. It is
 also written to Redis so the frontend can poll status without hitting the
 database every time. If any stage throws, the document is marked failed instead
-of being left stuck on processing forever.
+of being left stuck on processing forever. A crash takes the task down before it
+can do that, so `services.recovery` clears the leftovers on the next startup.
 """
 from __future__ import annotations
 

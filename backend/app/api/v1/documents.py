@@ -6,14 +6,12 @@ from __future__ import annotations
 import uuid as uuidlib
 from uuid import UUID
 
-import anyio
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.api.v1.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.exceptions import (
     DocumentNotFoundError,
-    FileTooLargeError,
     UnsupportedFileTypeError,
 )
 from app.db.redis_client import get_redis
@@ -35,6 +33,7 @@ from app.schemas.document import (
 from app.services.ingestion import ingest_document, upload_dir
 from app.services.reindex import reindex_document
 from app.services.summarization import summarize_documents
+from app.services.uploads import save_upload
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -63,17 +62,7 @@ async def upload_document(
     path = upload_dir() / sys_name
 
     # Write file to disk checking size limits
-    size = 0
-    async with await anyio.open_file(path, "wb") as f:
-        while chunk := await file.read(65536):
-            size += len(chunk)
-            if size > settings.max_upload_size_bytes:
-                # Remove the partial file before rejecting.
-                await anyio.Path(path).unlink(missing_ok=True)
-                raise FileTooLargeError(
-                    f"File exceeds the {settings.max_upload_size_mb}MB upload limit."
-                )
-            await f.write(chunk)
+    size = await save_upload(file, path)
 
     # Save metadata to database
     repo = DocumentRepository(db)
@@ -92,11 +81,13 @@ async def upload_document(
 
 @router.get("", response_model=list[DocumentPublic])
 async def list_documents(
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DocumentPublic]:
     repo = DocumentRepository(db)
-    return await repo.list_for_user(user.id)
+    return await repo.list_for_user(user.id, limit=limit, offset=offset)
 
 
 @router.get("/{document_id}/status", response_model=DocumentStatusResponse)

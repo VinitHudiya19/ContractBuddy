@@ -22,6 +22,7 @@ from app.db.vector_store import close_vector_store, init_vector_store
 from app.middleware.error_handler import register_exception_handlers
 from app.providers.factory import get_llm
 from app.services.bootstrap import warm_models
+from app.services.recovery import recover_interrupted_ingestions, sweep_staging_dir
 
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -42,6 +43,11 @@ async def lifespan(app: FastAPI):
     # Postgres deployments run `alembic upgrade head` from the entrypoint.
     if settings.is_sqlite:
         await create_tables_if_missing()
+
+    # Ingestion dies with the process, so clear out whatever the last one left
+    # half-done before we start serving.
+    await recover_interrupted_ingestions()
+    sweep_staging_dir()
 
     # Picks Qdrant when reachable, otherwise the built-in SQL vector store.
     store = await init_vector_store()

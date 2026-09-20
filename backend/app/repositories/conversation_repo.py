@@ -19,11 +19,17 @@ class ConversationRepository:
     async def get_by_id(self, conversation_id: UUID) -> Conversation | None:
         return await self.session.get(Conversation, conversation_id)
 
-    async def list_for_user(self, user_id: UUID) -> list[Conversation]:
+    async def list_for_user(
+        self, user_id: UUID, *, limit: int, offset: int = 0
+    ) -> list[Conversation]:
         result = await self.session.execute(
             select(Conversation)
             .where(Conversation.user_id == user_id)
-            .order_by(Conversation.updated_at.desc())
+            # id breaks ties so a row can't shift between pages and get served
+            # twice (or skipped) when timestamps collide.
+            .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+            .limit(limit)
+            .offset(offset)
         )
         return list(result.scalars().all())
 

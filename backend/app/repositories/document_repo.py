@@ -25,11 +25,15 @@ class DocumentRepository:
         )
         return result.scalar_one_or_none()
 
-    async def list_for_user(self, user_id: UUID) -> list[Document]:
+    async def list_for_user(
+        self, user_id: UUID, *, limit: int, offset: int = 0
+    ) -> list[Document]:
         result = await self.session.execute(
             select(Document)
             .where(Document.user_id == user_id)
-            .order_by(Document.uploaded_at.desc())
+            .order_by(Document.uploaded_at.desc(), Document.id.desc())
+            .limit(limit)
+            .offset(offset)
         )
         return list(result.scalars().all())
 

@@ -141,10 +141,27 @@ class ApiClient {
         return this.request('/api/me');
     }
 
+    // The list endpoints are capped server-side. The sidebars show everything,
+    // so walk the pages here; a short page means we reached the end. The page
+    // ceiling is a guard against looping forever if a page ever comes back full
+    // but unchanged.
+    async _fetchAllPages(path, pageSize = 100, maxPages = 50) {
+        const items = [];
+        for (let page = 0; page < maxPages; page++) {
+            const batch = await this.request(
+                path + '?limit=' + pageSize + '&offset=' + page * pageSize
+            );
+            if (!Array.isArray(batch)) return batch;
+            items.push(...batch);
+            if (batch.length < pageSize) break;
+        }
+        return items;
+    }
+
     // --- Document endpoints ---
 
     async getDocuments() {
-        return this.request('/api/documents');
+        return this._fetchAllPages('/api/documents');
     }
 
     async getDocumentStatus(docId) {
@@ -166,7 +183,7 @@ class ApiClient {
     // --- Conversation endpoints ---
 
     async getConversations() {
-        return this.request('/api/conversations');
+        return this._fetchAllPages('/api/conversations');
     }
 
     async createConversation(title, documentScope) {

@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import (
-    FileTooLargeError,
     NotFoundError,
     UnsupportedFileTypeError,
     ValidationError,
@@ -31,6 +30,7 @@ from app.models.user import User
 from app.repositories.contract_repo import ContractRepository
 from app.schemas.contract import ContractResponse
 from app.services.contract_analysis import analyze_contract
+from app.services.uploads import save_upload
 
 logger = get_logger(__name__)
 
@@ -104,14 +104,8 @@ async def create_contract(
             f"Supported contract formats: {', '.join(sorted(_SUPPORTED))}."
         )
 
-    content = await file.read()
-    if len(content) > settings.max_upload_size_bytes:
-        raise FileTooLargeError(
-            f"File exceeds the {settings.max_upload_size_mb}MB upload limit."
-        )
-
     path = _contract_dir() / f"{uuid4()}{suffix}"
-    path.write_bytes(content)
+    await save_upload(file, path)
 
     text = extract_text(path)
     analysis = await analyze_contract(title, text)
