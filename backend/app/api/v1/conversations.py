@@ -6,10 +6,11 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
+from app.api.v1.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.exceptions import AppError, ConversationNotFoundError
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal, get_db
@@ -59,11 +60,13 @@ async def create_conversation(
 
 @router.get("", response_model=list[ConversationPublic])
 async def list_conversations(
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationPublic]:
     repo = ConversationRepository(db)
-    return await repo.list_for_user(user.id)
+    return await repo.list_for_user(user.id, limit=limit, offset=offset)
 
 
 @router.patch("/{conversation_id}", response_model=ConversationPublic)

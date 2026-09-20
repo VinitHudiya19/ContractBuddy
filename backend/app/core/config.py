@@ -66,6 +66,10 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
+    # Generous enough for a long answer, short enough that a stuck call fails
+    # instead of pinning the worker until the client gives up.
+    llm_timeout_seconds: float = 60.0
+    llm_max_retries: int = 2
 
     # ---- Retrieval tuning ----
     chunk_tokens: int = 500

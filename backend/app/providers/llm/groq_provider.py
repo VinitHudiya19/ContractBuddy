@@ -36,7 +36,13 @@ class GroqProvider(LLMProvider):
             from groq import AsyncGroq
         except ImportError as exc:
             raise LLMProviderError("groq package is not installed.") from exc
-        self._client = AsyncGroq(api_key=settings.groq_api_key)
+        # Without this the SDK default decides how long a request can hang, and
+        # a stalled Groq call would hold the worker for as long as it likes.
+        self._client = AsyncGroq(
+            api_key=settings.groq_api_key,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
+        )
         self._model = settings.groq_model
 
     @staticmethod
