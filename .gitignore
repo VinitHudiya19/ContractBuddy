@@ -39,7 +39,10 @@ models_cache/
 .vscode/
 .DS_Store
 Thumbs.db
+desktop.ini
 *.log
+*.bak
+*.tmp
 
 # ---- Agent / editor config ----
 .claude/
@@ -52,6 +55,8 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-INTERVIEW_PREP_GUIDE.md/
-# Personal notes, not part of the project
+# ---- Personal notes, not part of the project ----
 INTERVIEW_PREP_GUIDE.md
+STUDY_GUIDE.md
+notes/
+TODO.md

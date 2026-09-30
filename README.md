@@ -172,6 +172,10 @@ Swagger at <http://localhost:8000/docs>.
 | `POST` | `/api/contracts` | upload and extract structured fields |
 | `GET` | `/health` | status of each dependency |
 
+`/api/documents` and `/api/conversations` take `limit` (default 50, max 200) and
+`offset`. They're ordered by timestamp with the id as a tiebreaker, so a row
+can't shift between pages and come back twice.
+
 ```bash
 curl -X POST http://localhost:8000/api/auth/register -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"a-strong-password","full_name":"Your Name"}'
 ```
@@ -203,11 +207,12 @@ back `null` and renders as `—`, never a guess.
 cd backend && pytest -q
 ```
 
-64 tests, no Docker or network needed. The suite runs on SQLite with the SQL
+74 tests, no Docker or network needed. The suite runs on SQLite with the SQL
 vector store and the extractive provider, so it works offline and without API
 keys. It covers RRF fusion, chunk overlap and page mapping, query tokenising,
 auth and refresh rotation, account isolation, the full upload to cited answer
-path, and the contract analysis parsing.
+path, the contract analysis parsing, and the failure cases: interrupted
+ingestion, oversized uploads, and paging.
 
 ```bash
 ruff check app tests
@@ -268,8 +273,12 @@ samples/         a contract to try it with
 
 - **The SQL vector store checks every row.** O(n) per query. Fine for a demo,
   not for real data, which is what Qdrant's HNSW index is for.
-- **Ingestion runs in a FastAPI background task**, so it dies if the process
-  restarts mid-upload. Celery or RQ with retries would fix it.
+- **Ingestion runs in a FastAPI background task**, so a restart kills whatever
+  was mid-upload. Startup marks those documents failed and tells you to upload
+  again, which at least beats a spinner that never stops, but it can't resume
+  them — the staged file has no link back to its row. A real queue (Celery, RQ)
+  with retries is the actual fix; I skipped it because it would mean the app no
+  longer runs on a clean clone.
 - **Chunking is fixed-size.** Splitting on clause boundaries would keep legal
   provisions in one piece. Next thing I'd do.
 - **I haven't measured retrieval quality.** I can explain why the design should
@@ -277,6 +286,8 @@ samples/         a contract to try it with
   settle it either way.
 - **Rate limiting fails open** when Redis is down. Fine here, wrong for
   anything public.
+- **No per-account storage quota.** Uploads are capped at 20 MB each but not in
+  total, so one account can fill the disk a file at a time.
 
 ---
 

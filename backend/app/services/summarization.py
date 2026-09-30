@@ -3,8 +3,9 @@ Document summarization using map-reduce over the chunks.
 
 Map: chunks are grouped into context-window-sized batches; each batch is
 summarized independently. Reduce: the partial summaries are summarized into one
-final answer. Single-batch documents skip the reduce step. Reuses the same
-pluggable LLMProvider (and therefore the retry/breaker/fallback stack).
+final answer. Single-batch documents skip the reduce step. Goes through the same
+pluggable LLMProvider as everything else, so it inherits the configured timeout
+and retries, and the extractive fallback when there is no API key.
 """
 from __future__ import annotations
 
